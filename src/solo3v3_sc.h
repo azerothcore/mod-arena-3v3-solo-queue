@@ -24,7 +24,6 @@
 #include "ScriptedGossip.h"
 #include "Config.h"
 #include "Battleground.h"
-#include "BattleGround.h"
 #include "solo3v3.h"
 
 class NpcSolo3v3 : public CreatureScript

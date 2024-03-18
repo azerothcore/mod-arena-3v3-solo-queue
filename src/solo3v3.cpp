@@ -15,7 +15,7 @@
  * with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "Solo3v3.h"
+#include "solo3v3.h"
 #include "ArenaTeamMgr.h"
 #include "BattlegroundMgr.h"
 #include "Config.h"

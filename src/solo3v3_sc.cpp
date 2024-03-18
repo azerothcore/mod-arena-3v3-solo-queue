@@ -411,9 +411,6 @@ void Solo3v3BG::OnQueueUpdate(BattlegroundQueue* queue, uint32 /*diff*/, Battleg
     // Solo 3v3
     if (sSolo->CheckSolo3v3Arena(queue, bracket_id))
     {
-        uint32 minLvl = bracketEntry->minLevel;
-        uint32 maxLvl = bracketEntry->maxLevel;
-
         Battleground* arena = sBattlegroundMgr->CreateNewBattleground(bgTypeId, bracketEntry, arenaType, isRated);
         if (!arena)
             return;

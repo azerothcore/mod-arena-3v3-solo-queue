@@ -18,4 +18,4 @@ Arena.3v3.BlockForbiddenTalents = 0
 Arena.CheckEquipAndTalents = 0
 Solo.3v3.CastDeserterOnAfk = 1
 Solo.3v3.CastDeserterOnLeave = 0
-Solo.3v3.StopGameIncomplete = 1
+Solo.3v3.StopGameIncomplete = 0

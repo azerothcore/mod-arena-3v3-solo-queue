@@ -215,7 +215,7 @@ bool Solo3v3::CheckSolo3v3Arena(BattlegroundQueue* queue, BattlegroundBracketId 
     queue->m_SelectionPools[TEAM_ALLIANCE].Init();
     queue->m_SelectionPools[TEAM_HORDE].Init();
 
-    uint32 MinPlayersPerTeam = 1; // 3;
+    uint32 MinPlayersPerTeam = 3;
 
     bool filterTalents = sConfigMgr->GetOption<bool>("Solo.3v3.FilterTalents", false);
 

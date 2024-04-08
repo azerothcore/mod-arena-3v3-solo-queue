@@ -264,7 +264,7 @@ bool NpcSolo3v3::JoinQueueArena(Player* player, Creature* creature, bool isRated
 
     // check if already in queue
     if (player->GetBattlegroundQueueIndex(bgQueueTypeId) < PLAYER_MAX_BATTLEGROUND_QUEUES)
-        return false; // //player is already in this queue
+        return false; // player is already in this queue
 
     // check if has free queue slots
     if (!player->HasFreeBattlegroundQueueId())

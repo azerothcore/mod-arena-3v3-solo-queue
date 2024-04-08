@@ -23,34 +23,18 @@
 #include "BattlegroundMgr.h"
 #include "Player.h"
 
-enum AZTHArenaType
-{
-    ARENA_TYPE_1v1 = 1, // Custom 1v1 Arena Rated
-    ARENA_TYPE_3v3_SOLO = 4 // 3v3 soloqueue
-};
+// Custom 1v1 Arena Rated
+constexpr uint32 ARENA_TYPE_1v1 = 1;
+constexpr uint32 ARENA_TEAM_1v1 = 1;
+constexpr uint32 ARENA_SLOT_1v1 = 3;
+constexpr uint32 BATTLEGROUND_QUEUE_1v1 = 11;
+constexpr BattlegroundQueueTypeId bgQueueTypeId1v1 = (BattlegroundQueueTypeId)((int)BATTLEGROUND_QUEUE_5v5 + 1);
 
-enum AZTHArenaTeamType
-{
-    ARENA_TEAM_1v1 = 1, // Custom 1v1 Arena Rated
-    ARENA_TEAM_SOLO_3v3 = 4 // 3v3 soloqueue
-};
-
-enum AZTHArenaSlot
-{
-    ARENA_SLOT_1v1 = 3, // Custom 1v1 Arena Rated
-    ARENA_SLOT_SOLO_3v3 = 4 // 3v3 soloqueue
-};
-
-enum AZTHBattlegroundQueueTypeId
-{
-    BATTLEGROUND_QUEUE_1v1 = 11,
-    BATTLEGROUND_QUEUE_3v3_SOLO = 12
-};
-
-// constexpr uint32 ARENA_TEAM_SOLO_3v3 = 6;
-// constexpr uint32 ARENA_TYPE_3v3_SOLO = 6;
-// constexpr uint32 ARENA_SLOT_SOLO_3v3 = 6;
-// constexpr uint32 BATTLEGROUND_QUEUE_3v3_SOLO = 11;
+// custom 3v3 Arena
+constexpr uint32 ARENA_TEAM_SOLO_3v3 = 4;
+constexpr uint32 ARENA_TYPE_3v3_SOLO = 4;
+constexpr uint32 ARENA_SLOT_SOLO_3v3 = 4;
+constexpr uint32 BATTLEGROUND_QUEUE_3v3_SOLO = 12;
 constexpr BattlegroundQueueTypeId bgQueueTypeId = (BattlegroundQueueTypeId)((int)BATTLEGROUND_QUEUE_3v3);
 
 

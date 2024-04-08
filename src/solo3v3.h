@@ -140,6 +140,7 @@ public:
 
     // Returns MELEE, RANGE or HEALER (depends on talent builds)
     Solo3v3TalentCat GetTalentCatForSolo3v3(Player* player);
+    Solo3v3TalentCat GetFirstAvailableSlot(bool soloTeam[][MAX_TALENT_CAT]);
 };
 
 #define sSolo Solo3v3::instance()

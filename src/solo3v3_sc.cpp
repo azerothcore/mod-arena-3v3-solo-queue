@@ -449,6 +449,40 @@ void Solo3v3BG::OnBattlegroundUpdate(Battleground* bg, uint32 /*diff*/)
     sSolo->CheckStartSolo3v3Arena(bg);
 }
 
+void Solo3v3BG::OnBattlegroundDestroy(Battleground* bg)
+{
+    sSolo->CleanUp3v3SoloQ(bg);
+}
+
+void Solo3v3BG::OnBattlegroundEndReward(Battleground* bg, Player* player, TeamId winnerTeamId)
+{
+    if (bg->isRated() && bg->GetArenaType() == ARENA_TYPE_3v3_SOLO)
+    {
+        ObjectGuid guid = player->GetGUID();
+        ArenaTeam* team = sArenaTeamMgr->GetArenaTeamByCaptain(guid, ARENA_TEAM_SOLO_3v3);
+
+        if (team && team->GetId() < 0xFFF00000) // solo 3v3 team and not a temporary team
+        {
+            std::string playerId = guid.ToString();
+            std::string teamId = std::to_string(team->GetId());
+            std::string logMessage = "Solo3v3 OnBGEnd: Team found, Team ID: " + teamId + ", Player ID: " + playerId;
+            LOG_ERROR("solo3v3", logMessage.c_str());
+            sSolo->SaveSoloDB(team);
+        }
+        else
+        {
+            if (team && team->GetId() >= 0xFFF00000)
+            {
+                LOG_ERROR("solo3v3", "Solo3v3 OnBGEnd: Team found, but it's a temporary team ID: {}", team->GetId());
+            }
+            else
+            {
+                LOG_ERROR("solo3v3", "Solo3v3 OnBGEnd: Team not found");
+            }
+        }
+    }
+}
+
 void ConfigLoader3v3Arena::OnAfterConfigLoad(bool /*Reload*/)
 {
     ArenaTeam::ArenaSlotByType.emplace(ARENA_TEAM_SOLO_3v3, ARENA_SLOT_SOLO_3v3);

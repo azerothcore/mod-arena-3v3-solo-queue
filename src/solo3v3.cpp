@@ -56,7 +56,12 @@ void Solo3v3::SaveSoloDB(ArenaTeam* team)
             if (itrMgr.first < 0xFFF00000 && itrMgr.second->GetCaptain() == itr.Guid && itrMgr.second->GetType() == ARENA_TEAM_SOLO_3v3)
             {
                 plrArenaTeam = itrMgr.second; // found!
+                LOG_ERROR("solo3v3", "SaveSoloDB - found team ID: {}", plrArenaTeam->GetId());
                 break;
+            }
+            else
+            {
+                LOG_ERROR("solo3v3", "SaveSoloDB - didnt find the player team");
             }
         }
 
@@ -111,6 +116,7 @@ void Solo3v3::SaveSoloDB(ArenaTeam* team)
 
         plrArenaTeam->SetArenaTeamStats(atStats);
         plrArenaTeam->NotifyStatsChanged();
+        LOG_ERROR("solo3v3", "SaveSoloDB - Saved to DB");
         plrArenaTeam->SaveToDB();
     }
 }

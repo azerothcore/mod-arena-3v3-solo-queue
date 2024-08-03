@@ -91,7 +91,7 @@ bool NpcSolo3v3::OnGossipSelect(Player* player, Creature* creature, uint32 /*sen
     {
         case 1: // Create new Arenateam
         {
-            if (sConfigMgr->GetOption<uint32>("Solo.3v3.MinLevel", 80) <= player->getLevel())
+            if (sConfigMgr->GetOption<uint32>("Solo.3v3.MinLevel", 80) <= player->GetLevel())
             {
                 int cost = sConfigMgr->GetOption<uint32>("Solo.3v3.Cost", 1);
 
@@ -230,7 +230,7 @@ bool NpcSolo3v3::JoinQueueArena(Player* player, Creature* creature, bool isRated
     if (!player || !creature)
         return false;
 
-    if (sConfigMgr->GetOption<uint32>("Solo.3v3.MinLevel", 80) > player->getLevel())
+    if (sConfigMgr->GetOption<uint32>("Solo.3v3.MinLevel", 80) > player->GetLevel())
         return false;
 
     uint8 arenatype = ARENA_TYPE_3v3_SOLO;
@@ -257,7 +257,7 @@ bool NpcSolo3v3::JoinQueueArena(Player* player, Creature* creature, bool isRated
         return false;
     }
 
-    PvPDifficultyEntry const* bracketEntry = GetBattlegroundBracketByLevel(bg->GetMapId(), player->getLevel());
+    PvPDifficultyEntry const* bracketEntry = GetBattlegroundBracketByLevel(bg->GetMapId(), player->GetLevel());
 
     if (!bracketEntry)
         return false;

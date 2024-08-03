@@ -157,7 +157,7 @@ bool NpcSolo3v3::OnGossipSelect(Player* player, Creature* creature, uint32 /*sen
                 s << "\nWeek Games: " << at->GetStats().WeekGames;
                 s << "\nWeek Wins: " << at->GetStats().WeekWins;
 
-                ChatHandler(player->GetSession()).PSendSysMessage("%s", s.str().c_str());
+                ChatHandler(player->GetSession()).PSendSysMessage("{}", s.str().c_str());
             }
 
             return true;

@@ -456,6 +456,7 @@ void Solo3v3BG::OnBattlegroundDestroy(Battleground* bg)
 
 void Solo3v3BG::OnBattlegroundEndReward(Battleground* bg, Player* player, TeamId winnerTeamId)
 {
+    //if (bg->isRated() && bg->GetArenaType() == 9)
     if (bg->isRated() && bg->GetArenaType() == ARENA_TYPE_3v3_SOLO)
     {
         ObjectGuid guid = player->GetGUID();

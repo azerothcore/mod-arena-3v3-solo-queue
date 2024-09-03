@@ -447,7 +447,7 @@ bool Solo3v3BG::OnQueueUpdateValidity(BattlegroundQueue* /* queue */, uint32 /*d
     if (arenaType == (ArenaType)ARENA_TYPE_3v3_SOLO)
         return false;
 
-    return false;
+    return true;
 }
 
 void Solo3v3BG::OnBattlegroundUpdate(Battleground* bg, uint32 /*diff*/)
@@ -463,7 +463,7 @@ void Solo3v3BG::OnBattlegroundDestroy(Battleground* bg)
     sSolo->CleanUp3v3SoloQ(bg);
 }
 
-void Solo3v3BG::OnBattlegroundEndReward(Battleground* bg, Player* player, TeamId winnerTeamId)
+void Solo3v3BG::OnBattlegroundEndReward(Battleground* bg, Player* player, TeamId /* winnerTeamId */)
 {
     //if (bg->isRated() && bg->GetArenaType() == 9)
     if (bg->isRated() && bg->GetArenaType() == ARENA_TYPE_3v3_SOLO)

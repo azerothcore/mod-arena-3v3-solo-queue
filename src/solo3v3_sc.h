@@ -57,7 +57,7 @@ public:
     void OnBattlegroundUpdate(Battleground* bg, uint32 /*diff*/) override;
     bool OnQueueUpdateValidity(BattlegroundQueue* /* queue */, uint32 /*diff*/, BattlegroundTypeId /* bgTypeId */, BattlegroundBracketId /* bracket_id */, uint8 arenaType, bool /* isRated */, uint32 /*arenaRatedTeamId*/) override;
     void OnBattlegroundDestroy(Battleground* bg) override;
-    void OnBattlegroundEndReward(Battleground* bg, Player* player, TeamId winnerTeamId) override;
+    void OnBattlegroundEndReward(Battleground* bg, Player* player, TeamId /* winnerTeamId */) override;
 };
 
 class ConfigLoader3v3Arena : public WorldScript

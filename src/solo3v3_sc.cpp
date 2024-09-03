@@ -91,7 +91,7 @@ bool NpcSolo3v3::OnGossipSelect(Player* player, Creature* creature, uint32 /*sen
     {
         case 1: // Create new Arenateam
         {
-            if (sConfigMgr->GetOption<uint32>("Solo.3v3.MinLevel", 80) <= player->getLevel())
+            if (sConfigMgr->GetOption<uint32>("Solo.3v3.MinLevel", 80) <= player->GetLevel())
             {
                 int cost = sConfigMgr->GetOption<uint32>("Solo.3v3.Cost", 1);
 
@@ -157,7 +157,7 @@ bool NpcSolo3v3::OnGossipSelect(Player* player, Creature* creature, uint32 /*sen
                 s << "\nWeek Games: " << at->GetStats().WeekGames;
                 s << "\nWeek Wins: " << at->GetStats().WeekWins;
 
-                ChatHandler(player->GetSession()).PSendSysMessage("%s", s.str().c_str());
+                ChatHandler(player->GetSession()).PSendSysMessage("{}", s.str().c_str());
             }
 
             return true;
@@ -230,7 +230,7 @@ bool NpcSolo3v3::JoinQueueArena(Player* player, Creature* creature, bool isRated
     if (!player || !creature)
         return false;
 
-    if (sConfigMgr->GetOption<uint32>("Solo.3v3.MinLevel", 80) > player->getLevel())
+    if (sConfigMgr->GetOption<uint32>("Solo.3v3.MinLevel", 80) > player->GetLevel())
         return false;
 
     uint8 arenatype = ARENA_TYPE_3v3_SOLO;
@@ -257,7 +257,7 @@ bool NpcSolo3v3::JoinQueueArena(Player* player, Creature* creature, bool isRated
         return false;
     }
 
-    PvPDifficultyEntry const* bracketEntry = GetBattlegroundBracketByLevel(bg->GetMapId(), player->getLevel());
+    PvPDifficultyEntry const* bracketEntry = GetBattlegroundBracketByLevel(bg->GetMapId(), player->GetLevel());
 
     if (!bracketEntry)
         return false;
@@ -456,6 +456,41 @@ void Solo3v3BG::OnBattlegroundUpdate(Battleground* bg, uint32 /*diff*/)
         return;
 
     sSolo->CheckStartSolo3v3Arena(bg);
+}
+
+void Solo3v3BG::OnBattlegroundDestroy(Battleground* bg)
+{
+    sSolo->CleanUp3v3SoloQ(bg);
+}
+
+void Solo3v3BG::OnBattlegroundEndReward(Battleground* bg, Player* player, TeamId winnerTeamId)
+{
+    //if (bg->isRated() && bg->GetArenaType() == 9)
+    if (bg->isRated() && bg->GetArenaType() == ARENA_TYPE_3v3_SOLO)
+    {
+        ObjectGuid guid = player->GetGUID();
+        ArenaTeam* team = sArenaTeamMgr->GetArenaTeamByCaptain(guid, ARENA_TEAM_SOLO_3v3);
+
+        if (team && team->GetId() < 0xFFF00000) // solo 3v3 team and not a temporary team
+        {
+            std::string playerId = guid.ToString();
+            std::string teamId = std::to_string(team->GetId());
+            std::string logMessage = "Solo3v3 OnBGEnd: Team found, Team ID: " + teamId + ", Player ID: " + playerId;
+            LOG_ERROR("solo3v3", logMessage.c_str());
+            sSolo->SaveSoloDB(team);
+        }
+        else
+        {
+            if (team && team->GetId() >= 0xFFF00000)
+            {
+                LOG_ERROR("solo3v3", "Solo3v3 OnBGEnd: Team found, but it's a temporary team ID: {}", team->GetId());
+            }
+            else
+            {
+                LOG_ERROR("solo3v3", "Solo3v3 OnBGEnd: Team not found");
+            }
+        }
+    }
 }
 
 void ConfigLoader3v3Arena::OnAfterConfigLoad(bool /*Reload*/)

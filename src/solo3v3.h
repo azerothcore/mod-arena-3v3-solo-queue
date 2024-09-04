@@ -35,7 +35,7 @@ constexpr uint32 ARENA_TEAM_SOLO_3v3 = 4;
 constexpr uint32 ARENA_TYPE_3v3_SOLO = 4;
 constexpr uint32 ARENA_SLOT_SOLO_3v3 = 4;
 constexpr uint32 BATTLEGROUND_QUEUE_3v3_SOLO = 12;
-constexpr BattlegroundQueueTypeId bgQueueTypeId = (BattlegroundQueueTypeId)((int)BATTLEGROUND_QUEUE_3v3);
+constexpr BattlegroundQueueTypeId bgQueueTypeId = (BattlegroundQueueTypeId)((int)12);
 
 
 const uint32 FORBIDDEN_TALENTS_IN_1V1_ARENA[] =

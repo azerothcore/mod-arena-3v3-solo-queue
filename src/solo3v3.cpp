@@ -162,6 +162,14 @@ void Solo3v3::CleanUp3v3SoloQ(Battleground* bg)
 
 void Solo3v3::CheckStartSolo3v3Arena(Battleground* bg)
 {
+    // Fix crash with Arena Replay module
+    for (const auto& playerPair : bg->GetPlayers())
+    {
+        Player* player = playerPair.second;
+        if (player->IsSpectator())
+            return;
+    }
+
     if (bg->GetArenaType() != ARENA_TYPE_3v3_SOLO)
         return;
 

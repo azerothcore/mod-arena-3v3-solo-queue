@@ -102,6 +102,16 @@ enum Solo3v3TalentCat
     MELEE = 0,
     RANGE,
     HEALER,
+    MAGE,
+    WARLOCK,
+    PRIEST,
+    ROGUE,
+    DRUID,
+    HUNTER,
+    SHAMAN,
+    DK,
+    PALADIN,
+    WARRIOR,
     MAX_TALENT_CAT
 };
 

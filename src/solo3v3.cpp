@@ -375,7 +375,7 @@ bool Solo3v3::Arena3v3CheckTalents(Player* player)
         ChatHandler(player->GetSession()).SendSysMessage("You can't join, because you have invested to much points in a forbidden talent. Please edit your talents.");
         return false;
     }
-    
+
     return true;
 }
 

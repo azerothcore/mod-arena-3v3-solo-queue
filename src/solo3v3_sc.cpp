@@ -465,8 +465,126 @@ void Solo3v3BG::OnBattlegroundDestroy(Battleground* bg)
     sSolo->CleanUp3v3SoloQ(bg);
 }
 
-void Solo3v3BG::OnBattlegroundEndReward(Battleground* bg, Player* player, TeamId /* winnerTeamId */)
+void Solo3v3BG::OnBattlegroundEndReward(Battleground* bg, Player* player, TeamId winnerTeamId)
 {
+    LOG_ERROR("solo3v3", "### START OnBattlegroundEndReward ###");
+
+    ArenaTeam* plrArenaTeam = sArenaTeamMgr->GetArenaTeamByCaptain(player->GetGUID(), ARENA_TEAM_SOLO_3v3);
+
+    if (!plrArenaTeam)
+        return;
+
+    ArenaTeamStats atStats = plrArenaTeam->GetStats();
+    int32 ratingModifier;
+
+    TeamId bgTeamId = player->GetBgTeamId();
+    if (bgTeamId == winnerTeamId) { // winner
+        ArenaTeam* winnerArenaTeam = sArenaTeamMgr->GetArenaTeamById(bg->GetArenaTeamIdForTeam(winnerTeamId == TEAM_NEUTRAL ? TEAM_HORDE : winnerTeamId));
+        ratingModifier = winnerArenaTeam->GetRating();
+
+        atStats.SeasonWins += 1;
+        atStats.WeekWins += 1;
+    } else { // loser
+        ArenaTeam* loserArenaTeam  = sArenaTeamMgr->GetArenaTeamById(bg->GetArenaTeamIdForTeam(winnerTeamId == TEAM_NEUTRAL ? TEAM_ALLIANCE : bg->GetOtherTeamId(winnerTeamId)));
+        ratingModifier = loserArenaTeam->GetRating();
+    }
+
+    if (int32(atStats.Rating) + ratingModifier < 0)
+        atStats.Rating = 0;
+    else
+        atStats.Rating += ratingModifier;
+
+    atStats.SeasonGames += 1;
+    atStats.WeekGames += 1;
+
+    plrArenaTeam->SetArenaTeamStats(atStats);
+    plrArenaTeam->NotifyStatsChanged();
+    LOG_ERROR("solo3v3", "NEW: SaveSoloDB - Saved to DB");
+    plrArenaTeam->SaveToDB();
+
+    // TODO: rank
+
+    // // Update team's rank, start with rank 1 and increase until no team with more rating was found
+    // Stats.Rank = 1;
+    // ArenaTeamMgr::ArenaTeamContainer::const_iterator i = sArenaTeamMgr->GetArenaTeamMapBegin();
+    // for (; i != sArenaTeamMgr->GetArenaTeamMapEnd(); ++i)
+    // {
+    //     if (i->second->GetType() == Type && i->second->GetStats().Rating > Stats.Rating)
+    //         ++Stats.Rank;
+    // }
+
+    // LOG_ERROR("3v3solo", "" fightId);
+    LOG_ERROR("3v3solo", "Player: {}, {}", player->GetGUID().ToString(), player->GetName());
+    LOG_ERROR("3v3solo", "arena type: {}", bg->GetArenaType());
+    // LOG_ERROR("3v3solo", "" ((GetStartTime() <= startDelay ? 0 : GetStartTime() - startDelay) / 1000));
+    // LOG_ERROR("3v3solo", "winner id: {}", winnerArenaTeam->GetId());
+    // LOG_ERROR("3v3solo", "loser id: {}", loserArenaTeam->GetId());
+    LOG_ERROR("3v3solo", "player id: {}", bgTeamId == winnerTeamId ? "winner" : "loser");
+    // LOG_ERROR("3v3solo", "winnerTeamRating: {}", winnerArenaTeam->GetRating()); // this can be used as winner change
+    LOG_ERROR("3v3solo", "winnerMatchmakerRating: {}", bg->GetArenaMatchmakerRating(winnerTeamId));
+    // LOG_ERROR("3v3solo", "winnerChange (if no winners TODO): {}", ARENA_TIMELIMIT_POINTS_LOSS);
+    // LOG_ERROR("3v3solo", "loserArenaTeam {}", loserArenaTeam->GetRating()); // this can be used as loser change
+    LOG_ERROR("3v3solo", "loserMatchmakerRating: {}", bg->GetArenaMatchmakerRating(TEAM_ALLIANCE));
+    // LOG_ERROR("3v3solo", "loserChange (if no winners TODO):  {}",  ARENA_TIMELIMIT_POINTS_LOSS);
+    // LOG_ERROR("3v3solo", ": {}",  currOnline);
+
+    // ### START OnBattlegroundEndReward ###
+    // Player: GUID Full: 0x000000000000000f Type: Player Low: 15, Gamera
+    // arena type: 4
+    // winner id: 4293918720
+    // loser id: 4293918721
+    // winnerTeamRating: 24
+    // winnerMatchmakerRating: 12
+    // winnerChange (if no winners TODO): -16
+    // loserArenaTeam 0
+    // loserMatchmakerRating: 12
+    // loserChange (if no winners TODO):  -16
+    // ### END OnBattlegroundEndReward ###
+
+    // LOG_ERROR("solo3v3", "PersonalRating: {}", itr->PersonalRating);
+    // LOG_ERROR("solo3v3", "WeekGames: {}", itr->WeekGames);
+    // LOG_ERROR("solo3v3", "WeekWins: {}", itr->WeekWins);
+    // LOG_ERROR("solo3v3", "SeasonGames: {}", itr->SeasonGames);
+    // LOG_ERROR("solo3v3", "SeasonWins: {}", itr->SeasonWins);
+
+
+    // CharacterDatabasePreparedStatement* stmt = CharacterDatabase.GetPreparedStatement(CHAR_UPD_ARENA_TEAM_STATS);
+    // stmt->SetData(0, Stats.Rating);
+    // stmt->SetData(1, Stats.WeekGames);
+    // stmt->SetData(2, Stats.WeekWins);
+    // stmt->SetData(3, Stats.SeasonGames);
+    // stmt->SetData(4, Stats.SeasonWins);
+    // stmt->SetData(5, Stats.Rank);
+    // stmt->SetData(6, GetId());
+    // trans->Append(stmt);
+
+    // for (MemberList::const_iterator itr = Members.begin(); itr != Members.end(); ++itr)
+    // {
+    //     // Save the effort and go
+    //     if (itr->WeekGames == 0 && !forceMemberSave)
+    //         continue;
+
+    //     stmt = CharacterDatabase.GetPreparedStatement(CHAR_UPD_ARENA_TEAM_MEMBER);
+    //     stmt->SetData(0, itr->PersonalRating);
+    //     stmt->SetData(1, itr->WeekGames);
+    //     stmt->SetData(2, itr->WeekWins);
+    //     stmt->SetData(3, itr->SeasonGames);
+    //     stmt->SetData(4, itr->SeasonWins);
+    //     stmt->SetData(5, GetId());
+    //     stmt->SetData(6, itr->Guid.GetCounter());
+    //     trans->Append(stmt);
+
+    //     stmt = CharacterDatabase.GetPreparedStatement(CHAR_REP_CHARACTER_ARENA_STATS);
+    //     stmt->SetData(0, itr->Guid.GetCounter());
+    //     stmt->SetData(1, GetSlot());
+    //     stmt->SetData(2, itr->MatchMakerRating);
+    //     stmt->SetData(3, itr->MaxMMR);
+    //     trans->Append(stmt);
+    // }
+
+
+    LOG_ERROR("solo3v3", "### END OnBattlegroundEndReward ###");
+
     if (bg->isRated() && bg->GetArenaType() == ARENA_TYPE_3v3_SOLO)
     {
         ObjectGuid guid = player->GetGUID();
@@ -541,6 +659,7 @@ void PlayerScript3v3Arena::OnLogin(Player* pPlayer)
     ChatHandler(pPlayer->GetSession()).SendSysMessage("This server is running the |cff4CFF00Arena solo Q 3v3 |rmodule.");
 }
 
+// not sure if this function is ever called, TODO: verify if the hook is called, if not, remove it
 void PlayerScript3v3Arena::GetCustomGetArenaTeamId(const Player* player, uint8 slot, uint32& id) const
 {
     if (slot == ARENA_SLOT_SOLO_3v3)

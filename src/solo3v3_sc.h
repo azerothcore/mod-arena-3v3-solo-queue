@@ -26,6 +26,17 @@
 #include "Battleground.h"
 #include "solo3v3.h"
 
+
+enum Npc3v3Actions {
+    NPC_3v3_ACTION_CREATE_ARENA_TEAM = 1,
+    NPC_3v3_ACTION_JOIN_QUEUE_ARENA_RATED = 2,
+    NPC_3v3_ACTION_LEAVE_QUEUE = 3,
+    NPC_3v3_ACTION_GET_STATISTICS = 4,
+    NPC_3v3_ACTION_DISBAND_ARENATEAM = 5,
+    NPC_3v3_ACTION_SCRIPT_INFO = 8
+};
+
+
 class NpcSolo3v3 : public CreatureScript
 {
 public:
@@ -52,6 +63,9 @@ class Solo3v3BG : public AllBattlegroundScript
 {
 public:
     Solo3v3BG() : AllBattlegroundScript("Solo3v3_BG") {}
+
+    uint32 oldTeamRatingAlliance;
+    uint32 oldTeamRatingHorde;
 
     void OnQueueUpdate(BattlegroundQueue* queue, uint32 /*diff*/, BattlegroundTypeId bgTypeId, BattlegroundBracketId bracket_id, uint8 arenaType, bool isRated, uint32 /*arenaRatedTeamId*/) override;
     void OnBattlegroundUpdate(Battleground* bg, uint32 /*diff*/) override;
@@ -86,11 +100,52 @@ public:
 
     void OnLogin(Player* pPlayer) override;
     void GetCustomGetArenaTeamId(const Player* player, uint8 slot, uint32& id) const override;
-    void GetCustomArenaPersonalRating(const Player* player, uint8 slot, uint32& rating) const override;
+    void OnGetArenaPersonalRating(Player* player, uint8 slot, uint32& rating) override;
     void OnGetMaxPersonalArenaRatingRequirement(const Player* player, uint32 minslot, uint32& maxArenaRating) const override;
     void OnGetArenaTeamId(Player* player, uint8 slot, uint32& result) override;
     bool NotSetArenaTeamInfoField(Player* player, uint8 slot, ArenaTeamInfoType type, uint32 value) override;
     bool CanBattleFieldPort(Player* player, uint8 arenaType, BattlegroundTypeId BGTypeID, uint8 action) override;
+};
+
+
+class Arena_SC : public ArenaScript
+{
+public:
+    Arena_SC() : ArenaScript("Arena_SC") { }
+
+    bool CanAddMember(ArenaTeam* team, ObjectGuid /* playerGuid */) override
+    {
+        if (!team)
+            return false;
+
+        if (!team->GetMembersSize())
+            return true;
+
+        if (/* team->GetType() == ARENA_TEAM_1v1 || */ team->GetType() == ARENA_TEAM_SOLO_3v3)
+            return false;
+
+        return true;
+    }
+
+    void OnGetPoints(ArenaTeam* team, uint32 /* memberRating */, float& points) override
+    {
+        if (!team)
+            return;
+
+        // if (team->GetType() == ARENA_TEAM_1v1)
+        //     points *= sConfigMgr->GetOption<float>("Azth.Rate.Arena1v1", 0.40f);
+
+        if (team->GetType() == ARENA_TEAM_SOLO_3v3)
+            points *= sConfigMgr->GetOption<float>("Solo.3v3.ArenaPointsMulti", 0.88f);
+    }
+
+    bool CanSaveToDB(ArenaTeam* team) override
+    {
+        if (team->GetId() >= MAX_ARENA_TEAM_ID)
+            return false;
+
+        return true;
+    }
 };
 
 void AddSC_Solo_3v3_Arena()
@@ -135,4 +190,5 @@ void AddSC_Solo_3v3_Arena()
     new Team3v3arena();
     new ConfigLoader3v3Arena();
     new PlayerScript3v3Arena();
+    new Arena_SC();
 }

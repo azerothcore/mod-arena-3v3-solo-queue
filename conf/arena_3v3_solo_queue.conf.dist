@@ -19,3 +19,4 @@ Arena.CheckEquipAndTalents = 0
 Solo.3v3.CastDeserterOnAfk = 1
 Solo.3v3.CastDeserterOnLeave = 0
 Solo.3v3.StopGameIncomplete = 0
+Solo.3v3.ShowMessageOnLogin = 0

@@ -233,11 +233,13 @@ public:
             ChatHandler(player->GetSession()).SendSysMessage("Solo 3v3 Arena testing command is disabled.");
             return false;
         }
+
         if (!sConfigMgr->GetOption<bool>("Solo.3v3.Enable", true))
         {
             ChatHandler(player->GetSession()).SendSysMessage("Solo 3v3 Arena is disabled.");
             return false;
         }
+
         NpcSolo3v3 SoloCommand;
         for (auto& pair : ObjectAccessor::GetPlayers())
         {
@@ -249,6 +251,7 @@ public:
                     handler->PSendSysMessage("Player {} can't be in combat.", currentPlayer->GetName().c_str());
                     continue;
                 }
+
                 if (currentPlayer->HasAura(26013) && (sConfigMgr->GetOption<bool>("Solo.3v3.CastDeserterOnAfk", true) || sConfigMgr->GetOption<bool>("Solo.3v3.CastDeserterOnLeave", true)))
                 {
                     WorldPacket data;
@@ -256,33 +259,28 @@ public:
                     currentPlayer->GetSession()->SendPacket(&data);
                     continue;
                 }
+
                 uint32 minLevel = sConfigMgr->GetOption<uint32>("Solo.3v3.MinLevel", 80);
                 if (currentPlayer->GetLevel() < minLevel)
                 {
                     handler->PSendSysMessage("Player {} needs level {}+ to join solo arena.", player->GetName().c_str(), minLevel);
                     continue;
                 }
+
                 if (!currentPlayer->GetArenaTeamId(ARENA_SLOT_SOLO_3v3)) // ARENA_SLOT_SOLO_3v3 | ARENA_TEAM_SOLO_3v3
                 {
                     if (!SoloCommand.CreateArenateam(currentPlayer, nullptr))
-                    {
                         continue;
-                    }
                 }
                 else
                 {
                     if (!SoloCommand.ArenaCheckFullEquipAndTalents(currentPlayer))
-                    {
                         continue;
-                    }
+
                     if (SoloCommand.JoinQueueArena(currentPlayer, nullptr, true))
-                    {
                         handler->PSendSysMessage("Player {} has joined the solo 3v3 arena queue.", currentPlayer->GetName().c_str());
-                    }
                     else
-                    {
                         handler->PSendSysMessage("Failed to join queue for player {}.", currentPlayer->GetName().c_str());
-                    }
                 }
             }
         }

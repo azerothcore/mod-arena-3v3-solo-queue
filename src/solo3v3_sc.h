@@ -173,16 +173,19 @@ public:
             ChatHandler(player->GetSession()).SendSysMessage("Solo 3v3 Arena command is disabled.");
             return false;
         }
+
         if (!sConfigMgr->GetOption<bool>("Solo.3v3.Enable", true))
         {
             ChatHandler(player->GetSession()).SendSysMessage("Solo 3v3 Arena is disabled.");
             return false;
         }
+
         if (player->IsInCombat())
         {
             ChatHandler(player->GetSession()).SendSysMessage("Can't be in combat.");
             return false;
         }
+
         NpcSolo3v3 SoloCommand;
         if (player->HasAura(26013) && (sConfigMgr->GetOption<bool>("Solo.3v3.CastDeserterOnAfk", true) || sConfigMgr->GetOption<bool>("Solo.3v3.CastDeserterOnLeave", true)))
         {
@@ -191,30 +194,27 @@ public:
             player->GetSession()->SendPacket(&data);
             return false;
         }
+
         uint32 minLevel = sConfigMgr->GetOption<uint32>("Solo.3v3.MinLevel", 80);
         if (player->GetLevel() < minLevel)
         {
             ChatHandler(player->GetSession()).PSendSysMessage("You need level {}+ to join solo arena.", minLevel);
             return false;
         }
+
         if (!player->GetArenaTeamId(ARENA_SLOT_SOLO_3v3))
         {
             // create solo3v3 team if player don't have it
             if (!SoloCommand.CreateArenateam(player, nullptr))
-            {
                 return false;
-            }
         }
         else
         {
             if (!SoloCommand.ArenaCheckFullEquipAndTalents(player))
-            {
                 return false;
-            }
+
             if (SoloCommand.JoinQueueArena(player, nullptr, true))
-            {
                 handler->PSendSysMessage("You have joined the solo 3v3 arena queue.");
-            }
         }
 
         return true;

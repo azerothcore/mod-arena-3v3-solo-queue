@@ -26,7 +26,6 @@
 #include "Battleground.h"
 #include "solo3v3.h"
 
-
 enum Npc3v3Actions {
     NPC_3v3_ACTION_CREATE_ARENA_TEAM = 1,
     NPC_3v3_ACTION_JOIN_QUEUE_ARENA_RATED = 2,
@@ -36,7 +35,6 @@ enum Npc3v3Actions {
     NPC_3v3_ACTION_JOIN_QUEUE_ARENA_UNRATED = 6,
     NPC_3v3_ACTION_SCRIPT_INFO = 8
 };
-
 
 class NpcSolo3v3 : public CreatureScript
 {
@@ -106,7 +104,6 @@ public:
     bool CanBattleFieldPort(Player* player, uint8 arenaType, BattlegroundTypeId BGTypeID, uint8 action) override;
 };
 
-
 class Arena_SC : public ArenaScript
 {
 public:
@@ -162,7 +159,7 @@ public:
         return SoloCommandTable;
     }
 
-    static bool HandleQueueSoloArena(ChatHandler* handler, const char* args)
+    static bool HandleQueueSoloArena(ChatHandler* handler, const char* /*args*/)
     {
         Player* player = handler->GetSession()->GetPlayer();
         if (!player)
@@ -222,7 +219,7 @@ public:
 
     // USED IN TESTING ONLY!!! (time saving when alt tabbing) Will join solo 3v3 on all players!
     // also use macros: /run AcceptBattlefieldPort(1,1); to accept queue and /afk to leave arena
-    static bool HandleQueueSoloArenaTesting(ChatHandler* handler, const char* args)
+    static bool HandleQueueSoloArenaTesting(ChatHandler* handler, const char* /*args*/)
     {
         Player* player = handler->GetSession()->GetPlayer();
         if (!player)
@@ -288,7 +285,6 @@ public:
         return true;
     }
 };
-
 
 void AddSC_Solo_3v3_Arena()
 {

@@ -249,7 +249,7 @@ bool NpcSolo3v3::ArenaCheckFullEquipAndTalents(Player* player)
 
 bool NpcSolo3v3::JoinQueueArena(Player* player, Creature* creature, bool isRated)
 {
-    if (!player || !creature)
+    if (!player/* || !creature*/)
         return false;
 
     if (sConfigMgr->GetOption<uint32>("Solo.3v3.MinLevel", 80) > player->GetLevel())
@@ -259,8 +259,11 @@ bool NpcSolo3v3::JoinQueueArena(Player* player, Creature* creature, bool isRated
     uint32 arenaRating = 0;
     uint32 matchmakerRating = 0;
 
-    // ignore if we already in BG or BG queue
-    if (player->InBattleground())
+    // ignore if we already in BG, Arena or Arena queue
+    if (player->InBattleground() || player->InArena() || player->InBattlegroundQueueForBattlegroundQueueType((BattlegroundQueueTypeId)BATTLEGROUND_QUEUE_2v2) ||
+        player->InBattlegroundQueueForBattlegroundQueueType((BattlegroundQueueTypeId)BATTLEGROUND_QUEUE_3v3) ||
+        player->InBattlegroundQueueForBattlegroundQueueType((BattlegroundQueueTypeId)BATTLEGROUND_QUEUE_5v5) ||
+        player->InBattlegroundQueueForBattlegroundQueueType((BattlegroundQueueTypeId)BATTLEGROUND_QUEUE_3v3_SOLO))
         return false;
 
     //check existance
@@ -333,7 +336,7 @@ bool NpcSolo3v3::JoinQueueArena(Player* player, Creature* creature, bool isRated
 
 bool NpcSolo3v3::CreateArenateam(Player* player, Creature* creature)
 {
-    if (!player || !creature)
+    if (!player/* || !creature*/)
         return false;
 
     // Check if player is already in an arena team

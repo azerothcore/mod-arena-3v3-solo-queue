@@ -9,6 +9,8 @@
 #
 
 Solo.3v3.Enable = 1
+Solo.3v3.EnableCommand = 1
+Solo.3v3.EnableTestingCommand = 1
 
 
 Solo.3v3.FilterTalents = 0

@@ -22,3 +22,7 @@ SET @entryNpcText2 := 1000004;
 SET @text2 := '                                |TInterface/ICONS/achievement_bg_killXEnemies_generalsroom:25|t$B                        Solo 3v3 Arena$B$B              Melee Caster Healer [|cffff0000off|r]';
 DELETE FROM `npc_text` WHERE `ID` = @entryNpcText;
 INSERT INTO `npc_text` (`ID`, `text0_0`) VALUES (@entryNpcText2, @text2);
+
+-- Command
+INSERT INTO `command` (`name`, `security`, `help`) VALUES ('qsolo', 0, '');
+INSERT INTO `command` (`name`, `security`, `help`) VALUES ('testqsolo', 4, '');

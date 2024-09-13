@@ -335,7 +335,7 @@ bool NpcSolo3v3::JoinQueueArena(Player* player, Creature* /*creature*/, bool isR
     return true;
 }
 
-bool NpcSolo3v3::CreateArenateam(Player* player, Creature* creature)
+bool NpcSolo3v3::CreateArenateam(Player* player, Creature* /*creature*/)
 {
     if (!player)
         return false;

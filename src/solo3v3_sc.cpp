@@ -247,7 +247,7 @@ bool NpcSolo3v3::ArenaCheckFullEquipAndTalents(Player* player)
     return true;
 }
 
-bool NpcSolo3v3::JoinQueueArena(Player* player, Creature* creature, bool isRated)
+bool NpcSolo3v3::JoinQueueArena(Player* player, Creature* /*creature*/, bool isRated)
 {
     if (!player)
         return false;

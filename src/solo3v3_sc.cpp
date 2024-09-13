@@ -249,7 +249,7 @@ bool NpcSolo3v3::ArenaCheckFullEquipAndTalents(Player* player)
 
 bool NpcSolo3v3::JoinQueueArena(Player* player, Creature* creature, bool isRated)
 {
-    if (!player/* || !creature*/)
+    if (!player)
         return false;
 
     if (sConfigMgr->GetOption<uint32>("Solo.3v3.MinLevel", 80) > player->GetLevel())
@@ -336,7 +336,7 @@ bool NpcSolo3v3::JoinQueueArena(Player* player, Creature* creature, bool isRated
 
 bool NpcSolo3v3::CreateArenateam(Player* player, Creature* creature)
 {
-    if (!player/* || !creature*/)
+    if (!player)
         return false;
 
     // Check if player is already in an arena team

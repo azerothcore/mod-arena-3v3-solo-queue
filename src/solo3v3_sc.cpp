@@ -106,7 +106,7 @@ bool NpcSolo3v3::OnGossipSelect(Player* player, Creature* creature, uint32 /*sen
             }
             else
             {
-                ChatHandler(player->GetSession()).PSendSysMessage("You need level %u+ to create an arena team.", sConfigMgr->GetOption<uint32>("Solo.3v3.MinLevel", 80));
+                ChatHandler(player->GetSession()).PSendSysMessage("You need level {}+ to create an arena team.", sConfigMgr->GetOption<uint32>("Solo.3v3.MinLevel", 80));
             }
 
             CloseGossipMenuFor(player);
@@ -180,6 +180,19 @@ bool NpcSolo3v3::OnGossipSelect(Player* player, Creature* creature, uint32 /*sen
 
                 ChatHandler(player->GetSession()).PSendSysMessage("{}", s.str().c_str());
                 CloseGossipMenuFor(player);
+
+                ArenaTeam::MemberList::iterator itr;
+                for (itr = at->GetMembers().begin(); itr != at->GetMembers().end(); ++itr)
+                {
+                    if (itr->Guid == player->GetGUID())
+                    {
+                        std::stringstream s;
+                        s << "\nSolo MMR: " << itr->MatchMakerRating;
+
+                        ChatHandler(player->GetSession()).PSendSysMessage("{}", s.str().c_str());
+                        break;
+                    }
+                }
             }
 
             return true;
@@ -514,14 +527,6 @@ bool Solo3v3BG::OnQueueUpdateValidity(BattlegroundQueue* /* queue */, uint32 /*d
     return true;
 }
 
-void Solo3v3BG::OnBattlegroundUpdate(Battleground* bg, uint32 /*diff*/)
-{
-    if (bg->GetStatus() != STATUS_IN_PROGRESS || !bg->isArena())
-        return;
-
-    sSolo->CheckStartSolo3v3Arena(bg);
-}
-
 void Solo3v3BG::OnBattlegroundDestroy(Battleground* bg)
 {
     sSolo->CleanUp3v3SoloQ(bg);
@@ -531,7 +536,8 @@ void Solo3v3BG::OnBattlegroundEndReward(Battleground* bg, Player* player, TeamId
 {
     if (bg->isRated() && bg->GetArenaType() == ARENA_TYPE_3v3_SOLO)
     {
-        ArenaTeam* plrArenaTeam = sArenaTeamMgr->GetArenaTeamByCaptain(player->GetGUID(), ARENA_TYPE_3v3_SOLO);
+        // this way we always get the correct solo team (sometimes when using GetArenaTeamByCaptain inside solo arena it can return a teamID >= 4293918720)
+        ArenaTeam* plrArenaTeam = sArenaTeamMgr->GetArenaTeamById(player->GetArenaTeamId(ARENA_SLOT_SOLO_3v3));
 
         if (!plrArenaTeam)
             return;
@@ -567,12 +573,9 @@ void Solo3v3BG::OnBattlegroundEndReward(Battleground* bg, Player* player, TeamId
         atStats.Rank = 1;
         ArenaTeamMgr::ArenaTeamContainer::const_iterator i = sArenaTeamMgr->GetArenaTeamMapBegin();
         for (; i != sArenaTeamMgr->GetArenaTeamMapEnd(); ++i) {
-            if (i->second->GetType() == ARENA_TYPE_3v3_SOLO && i->second->GetStats().Rating > atStats.Rating)
+            if (i->second->GetType() == ARENA_TEAM_SOLO_3v3 && i->second->GetStats().Rating > atStats.Rating)
                 ++atStats.Rank;
         }
-
-        plrArenaTeam->SetArenaTeamStats(atStats);
-        plrArenaTeam->NotifyStatsChanged();
 
         for (ArenaTeam::MemberList::iterator itr = plrArenaTeam->GetMembers().begin(); itr != plrArenaTeam->GetMembers().end(); ++itr)
         {
@@ -602,6 +605,8 @@ void Solo3v3BG::OnBattlegroundEndReward(Battleground* bg, Player* player, TeamId
 
         }
 
+        plrArenaTeam->SetArenaTeamStats(atStats);
+        plrArenaTeam->NotifyStatsChanged();
         plrArenaTeam->SaveToDB(true);
     }
 }
@@ -645,6 +650,127 @@ void Team3v3arena::OnQueueIdToArenaType(const BattlegroundQueueTypeId _bgQueueTy
     if (_bgQueueTypeId == bgQueueTypeId)
     {
         arenaType = ARENA_TYPE_3v3_SOLO;
+    }
+}
+
+void Arena_SC::OnArenaStart(Battleground* bg)
+{
+    if (bg->GetArenaType() != ARENA_TYPE_3v3_SOLO)
+        return;
+
+    int PlayersInArena = 0;
+    bool someoneNotInArena = false;
+
+    for (const auto& playerPair : bg->GetPlayers())
+    {
+        Player* player = playerPair.second;
+
+        // Fix crash with Arena Replay module
+        if (player->IsSpectator())
+            return;
+
+        if (!player)
+            continue;
+
+        PlayersInArena++;
+    }
+
+    uint32 AmountPlayersSolo3v3 = 6;
+    if (PlayersInArena < AmountPlayersSolo3v3)
+    {
+        someoneNotInArena = true;
+    }
+
+    // if one player didn't enter arena and StopGameIncomplete is true, then end arena
+    if (someoneNotInArena && sConfigMgr->GetOption<bool>("Solo.3v3.StopGameIncomplete", true))
+    {
+        bg->SetRated(false);
+        bg->EndBattleground(TEAM_NEUTRAL);
+    }
+}
+
+void PlayerScript3v3Arena::OnBattlegroundDesertion(Player* player, const BattlegroundDesertionType type)
+{
+    Battleground* bg = ((BattlegroundMap*)player->FindMap())->GetBG();
+
+    switch (type)
+    {
+        case ARENA_DESERTION_TYPE_LEAVE_BG:
+
+            if (bg->GetArenaType() == ARENA_TYPE_3v3_SOLO)
+            {
+                if (bg->GetStatus() == STATUS_WAIT_JOIN)
+                {
+                    if (sConfigMgr->GetOption<bool>("Solo.3v3.CastDeserterOnAfk", true) || sConfigMgr->GetOption<bool>("Solo.3v3.CastDeserterOnLeave", true))
+                    {
+                        player->CastSpell(player, 26013, true);
+                    }
+
+                    // end arena if a player leaves while in preparation
+                    if (sConfigMgr->GetOption<bool>("Solo.3v3.StopGameIncomplete", true))
+                    {
+                        bg->SetRated(false);
+                        bg->EndBattleground(TEAM_NEUTRAL);
+                    }
+
+                    sSolo->CountAsLoss(player, false);
+                }
+
+                if (bg->GetStatus() == STATUS_IN_PROGRESS)
+                {
+                    sSolo->CountAsLoss(player, true);
+                }
+            }
+            break;
+
+        case ARENA_DESERTION_TYPE_NO_ENTER_BUTTON: // called if player doesn't click 'enter arena' for solo 3v3
+
+            if (player->IsInvitedForBattlegroundQueueType((BattlegroundQueueTypeId)BATTLEGROUND_QUEUE_3v3_SOLO))
+            {
+                if (sConfigMgr->GetOption<bool>("Solo.3v3.CastDeserterOnAfk", true))
+                {
+                    player->CastSpell(player, 26013, true);
+                }
+
+                sSolo->CountAsLoss(player, false);
+            }
+            break;
+
+        case ARENA_DESERTION_TYPE_INVITE_LOGOUT: // called if player logout when solo 3v3 queue pops (it removes the queue)
+
+            if (player->IsInvitedForBattlegroundQueueType((BattlegroundQueueTypeId)BATTLEGROUND_QUEUE_3v3_SOLO))
+            {
+                if (sConfigMgr->GetOption<bool>("Solo.3v3.CastDeserterOnAfk", true) || sConfigMgr->GetOption<bool>("Solo.3v3.CastDeserterOnLeave", true))
+                {
+                    player->CastSpell(player, 26013, true);
+                }
+
+                sSolo->CountAsLoss(player, false);
+            }
+            break;
+
+            /*
+            case ARENA_DESERTION_TYPE_LEAVE_QUEUE: // called if player uses macro to leave queue when it pops. /run AcceptBattlefieldPort(1, 0);
+
+                // I believe these are being called AFTER the player removes the queue, so we can't know his queue
+                if (player->IsInvitedForBattlegroundQueueType((BattlegroundQueueTypeId)BATTLEGROUND_QUEUE_3v3_SOLO))
+                {
+                    LOG_ERROR("solo3v3", "IsInvitedForBattlegroundQueueType BATTLEGROUND_QUEUE_3v3_SOLO");
+                    sSolo->CountAsLoss(player, false);
+
+                }
+                else if (player->InBattlegroundQueueForBattlegroundQueueType((BattlegroundQueueTypeId)BATTLEGROUND_QUEUE_3v3_SOLO))
+                {
+                    LOG_ERROR("solo3v3", "InBattlegroundQueueForBattlegroundQueueType BATTLEGROUND_QUEUE_3v3_SOLO");
+                }
+                else
+                {
+                    LOG_ERROR("solo3v3", "ARENA_DESERTION_TYPE_LEAVE_QUEUE - else");
+                }
+            */
+
+        default:
+            break;
     }
 }
 
@@ -704,7 +830,6 @@ bool PlayerScript3v3Arena::NotSetArenaTeamInfoField(Player* player, uint8 slot, 
     return true;
 }
 
-
 bool PlayerScript3v3Arena::CanBattleFieldPort(Player* player, uint8 arenaType, BattlegroundTypeId BGTypeID, uint8 /*action*/)
 {
     if (!player)
@@ -720,7 +845,6 @@ bool PlayerScript3v3Arena::CanBattleFieldPort(Player* player, uint8 arenaType, B
 
     return true;
 }
-
 
 // class Spell_SC : public SpellSC
 // {

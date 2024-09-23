@@ -66,7 +66,6 @@ public:
     uint32 oldTeamRatingHorde;
 
     void OnQueueUpdate(BattlegroundQueue* queue, uint32 /*diff*/, BattlegroundTypeId bgTypeId, BattlegroundBracketId bracket_id, uint8 arenaType, bool isRated, uint32 /*arenaRatedTeamId*/) override;
-    void OnBattlegroundUpdate(Battleground* bg, uint32 /*diff*/) override;
     bool OnQueueUpdateValidity(BattlegroundQueue* /* queue */, uint32 /*diff*/, BattlegroundTypeId /* bgTypeId */, BattlegroundBracketId /* bracket_id */, uint8 arenaType, bool /* isRated */, uint32 /*arenaRatedTeamId*/) override;
     void OnBattlegroundDestroy(Battleground* bg) override;
     void OnBattlegroundEndReward(Battleground* bg, Player* player, TeamId /* winnerTeamId */) override;
@@ -102,6 +101,7 @@ public:
     void OnGetArenaTeamId(Player* player, uint8 slot, uint32& result) override;
     bool NotSetArenaTeamInfoField(Player* player, uint8 slot, ArenaTeamInfoType type, uint32 value) override;
     bool CanBattleFieldPort(Player* player, uint8 arenaType, BattlegroundTypeId BGTypeID, uint8 action) override;
+    void OnBattlegroundDesertion(Player* player, const BattlegroundDesertionType type) override;
 };
 
 class Arena_SC : public ArenaScript
@@ -139,4 +139,6 @@ public:
 
         return true;
     }
+
+    void OnArenaStart(Battleground* bg) override;
 };

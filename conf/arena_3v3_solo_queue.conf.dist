@@ -17,8 +17,12 @@ Solo.3v3.FilterTalents = 0
 Arena.CheckEquipAndTalents = 0
 Arena.3v3.BlockForbiddenTalents = 0
 Solo.3v3.CastDeserterOnAfk = 1
-Solo.3v3.CastDeserterOnLeave = 0
-Solo.3v3.StopGameIncomplete = 0
+Solo.3v3.CastDeserterOnLeave = 1
+Solo.3v3.StopGameIncomplete = 1
+Solo.3v3.RatingPenalty.LeaveDuringMatch = 24
+Solo.3v3.RatingPenalty.LeaveBeforeMatchStart = 50
+
+
 Solo.3v3.MinLevel = 80
 Solo.3v3.Cost = 45
 Solo.3v3.ArenaPointsMulti = 0.8

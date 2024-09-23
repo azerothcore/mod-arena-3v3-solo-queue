@@ -153,7 +153,7 @@ public:
         if (!spell)
             return false;
 
-        if (spell->GetCaster()->GetTypeId() == TYPEID_PLAYER)
+        if (spell->GetCaster()->IsPlayer())
         {
             Player* plr = spell->GetCaster()->ToPlayer();
 

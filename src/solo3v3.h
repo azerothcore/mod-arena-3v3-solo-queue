@@ -123,6 +123,7 @@ public:
     static Solo3v3* instance();
 
     uint32 GetAverageMMR(ArenaTeam* team);
+    void CheckStartSolo3v3Arena(Battleground* bg);
     void CleanUp3v3SoloQ(Battleground* bg);
     bool CheckSolo3v3Arena(BattlegroundQueue* queue, BattlegroundBracketId bracket_id, bool isRated);
     void CreateTempArenaTeamForQueue(BattlegroundQueue* queue, ArenaTeam* arenaTeams[]);

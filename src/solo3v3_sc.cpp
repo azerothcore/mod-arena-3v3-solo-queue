@@ -658,35 +658,7 @@ void Arena_SC::OnArenaStart(Battleground* bg)
     if (bg->GetArenaType() != ARENA_TYPE_3v3_SOLO)
         return;
 
-    int PlayersInArena = 0;
-    bool someoneNotInArena = false;
-
-    for (const auto& playerPair : bg->GetPlayers())
-    {
-        Player* player = playerPair.second;
-
-        // Fix crash with Arena Replay module
-        if (player->IsSpectator())
-            return;
-
-        if (!player)
-            continue;
-
-        PlayersInArena++;
-    }
-
-    uint32 AmountPlayersSolo3v3 = 6;
-    if (PlayersInArena < AmountPlayersSolo3v3)
-    {
-        someoneNotInArena = true;
-    }
-
-    // if one player didn't enter arena and StopGameIncomplete is true, then end arena
-    if (someoneNotInArena && sConfigMgr->GetOption<bool>("Solo.3v3.StopGameIncomplete", true))
-    {
-        bg->SetRated(false);
-        bg->EndBattleground(TEAM_NEUTRAL);
-    }
+    sSolo->CheckStartSolo3v3Arena(bg);
 }
 
 void PlayerScript3v3Arena::OnBattlegroundDesertion(Player* player, const BattlegroundDesertionType type)

@@ -121,6 +121,39 @@ void Solo3v3::CleanUp3v3SoloQ(Battleground* bg)
     }
 }
 
+void Solo3v3::CheckStartSolo3v3Arena(Battleground* bg)
+{
+    bool someoneNotInArena = false;
+    int PlayersInArena = 0;
+
+    for (const auto& playerPair : bg->GetPlayers())
+    {
+        Player* player = playerPair.second;
+
+        // Fix crash with Arena Replay module
+        if (player->IsSpectator())
+            return;
+
+        if (!player)
+            continue;
+
+        PlayersInArena++;
+    }
+
+    uint32 AmountPlayersSolo3v3 = 6;
+    if (PlayersInArena < AmountPlayersSolo3v3)
+    {
+        someoneNotInArena = true;
+    }
+
+    // if one player didn't enter arena and StopGameIncomplete is true, then end arena
+    if (someoneNotInArena && sConfigMgr->GetOption<bool>("Solo.3v3.StopGameIncomplete", true))
+    {
+        bg->SetRated(false);
+        bg->EndBattleground(TEAM_NEUTRAL);
+    }
+}
+
 bool Solo3v3::CheckSolo3v3Arena(BattlegroundQueue* queue, BattlegroundBracketId bracket_id, bool isRated)
 {
     bool soloTeam[BG_TEAMS_COUNT][MAX_TALENT_CAT]; // 2 teams and each team 3 players - set to true when slot is taken

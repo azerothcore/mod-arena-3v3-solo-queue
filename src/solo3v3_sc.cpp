@@ -721,33 +721,6 @@ bool PlayerScript3v3Arena::CanBattleFieldPort(Player* player, uint8 arenaType, B
     return true;
 }
 
-
-// class Spell_SC : public SpellSC
-// {
-// public:
-//     Spell_SC() : SpellSC("Spell_SC") { }
-
-//     bool CanSelectSpecTalent(Spell* spell) override
-//     {
-//         if (!spell)
-//             return false;
-
-//         if (spell->GetCaster()->isPlayer())
-//         {
-//             Player* plr = spell->GetCaster()->ToPlayer();
-
-//             if (plr->InBattlegroundQueueForBattlegroundQueueType((BattlegroundQueueTypeId)BATTLEGROUND_QUEUE_3v3_SOLO) /*||
-//                 plr->InBattlegroundQueueForBattlegroundQueueType((BattlegroundQueueTypeId)BATTLEGROUND_QUEUE_1v1)*/)
-//             {
-//                 plr->GetSession()->SendAreaTriggerMessage("You can't change your talents while in queue for 3v3."); // or 1v1
-//                 return false;
-//             }
-//         }
-
-//         return true;
-//     }
-// }
-
 void AddSC_Solo_3v3_Arena()
 {
     if (!ArenaTeam::ArenaSlotByType.count(ARENA_TEAM_SOLO_3v3))
@@ -771,4 +744,5 @@ void AddSC_Solo_3v3_Arena()
     new ConfigLoader3v3Arena();
     new PlayerScript3v3Arena();
     new Arena_SC();
+    new Solo3v3Spell();
 }

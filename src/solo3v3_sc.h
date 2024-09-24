@@ -157,7 +157,7 @@ public:
         {
             Player* plr = spell->GetCaster()->ToPlayer();
 
-            if (plr->InBattlegroundQueueForBattlegroundQueueType((BattlegroundQueueTypeId)BATTLEGROUND_QUEUE_3v3_SOLO) || plr->InBattlegroundQueueForBattlegroundQueueType((BattlegroundQueueTypeId)BATTLEGROUND_QUEUE_1v1))
+            if (plr->InBattlegroundQueueForBattlegroundQueueType((BattlegroundQueueTypeId)BATTLEGROUND_QUEUE_3v3_SOLO))
             {
                 plr->GetSession()->SendAreaTriggerMessage("You can't change your talents while in queue for solo arena.");
                 return false;

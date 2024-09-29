@@ -674,9 +674,7 @@ void PlayerScript3v3Arena::OnBattlegroundDesertion(Player* player, const Battleg
                 if (bg->GetStatus() == STATUS_WAIT_JOIN)
                 {
                     if (sConfigMgr->GetOption<bool>("Solo.3v3.CastDeserterOnAfk", true) || sConfigMgr->GetOption<bool>("Solo.3v3.CastDeserterOnLeave", true))
-                    {
                         player->CastSpell(player, 26013, true);
-                    }
 
                     // end arena if a player leaves while in preparation
                     if (sConfigMgr->GetOption<bool>("Solo.3v3.StopGameIncomplete", true))
@@ -689,9 +687,7 @@ void PlayerScript3v3Arena::OnBattlegroundDesertion(Player* player, const Battleg
                 }
 
                 if (bg->GetStatus() == STATUS_IN_PROGRESS)
-                {
                     sSolo->CountAsLoss(player, true);
-                }
             }
             break;
 
@@ -700,9 +696,7 @@ void PlayerScript3v3Arena::OnBattlegroundDesertion(Player* player, const Battleg
             if (player->IsInvitedForBattlegroundQueueType((BattlegroundQueueTypeId)BATTLEGROUND_QUEUE_3v3_SOLO))
             {
                 if (sConfigMgr->GetOption<bool>("Solo.3v3.CastDeserterOnAfk", true))
-                {
                     player->CastSpell(player, 26013, true);
-                }
 
                 sSolo->CountAsLoss(player, false);
             }
@@ -713,9 +707,7 @@ void PlayerScript3v3Arena::OnBattlegroundDesertion(Player* player, const Battleg
             if (player->IsInvitedForBattlegroundQueueType((BattlegroundQueueTypeId)BATTLEGROUND_QUEUE_3v3_SOLO))
             {
                 if (sConfigMgr->GetOption<bool>("Solo.3v3.CastDeserterOnAfk", true) || sConfigMgr->GetOption<bool>("Solo.3v3.CastDeserterOnLeave", true))
-                {
                     player->CastSpell(player, 26013, true);
-                }
 
                 sSolo->CountAsLoss(player, false);
             }

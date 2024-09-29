@@ -25,6 +25,7 @@
 #include "Config.h"
 #include "Battleground.h"
 #include "solo3v3.h"
+#include "Spell.h"
 
 enum Npc3v3Actions {
     NPC_3v3_ACTION_CREATE_ARENA_TEAM = 1,
@@ -141,4 +142,31 @@ public:
     }
 
     void OnArenaStart(Battleground* bg) override;
+};
+
+class Solo3v3Spell : public SpellSC
+{
+public:
+    Solo3v3Spell() : SpellSC("Solo3v3Spell") { }
+
+
+    bool CanSelectSpecTalent(Spell* spell) override
+    {
+        if (!spell)
+            return false;
+
+        if (spell->GetCaster()->IsPlayer())
+        {
+            Player* plr = spell->GetCaster()->ToPlayer();
+
+            if (plr->InBattlegroundQueueForBattlegroundQueueType((BattlegroundQueueTypeId)BATTLEGROUND_QUEUE_3v3_SOLO))
+            {
+                plr->GetSession()->SendAreaTriggerMessage("You can't change your talents while in queue for solo arena.");
+                return false;
+            }
+        }
+
+        return true;
+    }
+
 };

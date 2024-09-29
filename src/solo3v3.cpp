@@ -124,18 +124,18 @@ void Solo3v3::CleanUp3v3SoloQ(Battleground* bg)
 void Solo3v3::CheckStartSolo3v3Arena(Battleground* bg)
 {
     bool someoneNotInArena = false;
-    int PlayersInArena = 0;
+    uint32 PlayersInArena = 0;
 
     for (const auto& playerPair : bg->GetPlayers())
     {
         Player* player = playerPair.second;
 
+        if (!player)
+            continue;
+
         // Fix crash with Arena Replay module
         if (player->IsSpectator())
             return;
-
-        if (!player)
-            continue;
 
         PlayersInArena++;
     }

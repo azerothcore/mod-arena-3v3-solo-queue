@@ -748,7 +748,7 @@ void PlayerScript3v3Arena::OnBattlegroundDesertion(Player* player, const Battleg
 
 void PlayerScript3v3Arena::OnLogin(Player* pPlayer)
 {
-    if (sConfigMgr->GetOption<bool>("Solo.3v3.Enable", false)) {
+    if (sConfigMgr->GetOption<bool>("Solo.3v3.ShowMessageOnLogin", false)) {
         ChatHandler(pPlayer->GetSession()).SendSysMessage("This server is running the |cff4CFF00Arena solo Q 3v3 |rmodule.");
     }
 }

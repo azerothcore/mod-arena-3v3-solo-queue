@@ -81,8 +81,8 @@ void Solo3v3::CountAsLoss(Player* player, bool isInProgress)
 
     for (ArenaTeam::MemberList::iterator itr = plrArenaTeam->GetMembers().begin(); itr != plrArenaTeam->GetMembers().end(); ++itr) {
         if (itr->Guid == player->GetGUID()) {
-            itr->WeekGames = atStats.WeekGames;
-            itr->SeasonGames = atStats.SeasonGames;
+            itr->WeekGames += 1;
+            itr->SeasonGames += 1;
             itr->PersonalRating = atStats.Rating;
 
             if (int32(itr->MatchMakerRating) - ratingLoss < 0)

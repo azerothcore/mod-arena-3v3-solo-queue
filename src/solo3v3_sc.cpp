@@ -576,6 +576,9 @@ void Solo3v3BG::OnBattlegroundEndReward(Battleground* bg, Player* player, TeamId
             ArenaTeam* winnerArenaTeam = sArenaTeamMgr->GetArenaTeamById(bg->GetArenaTeamIdForTeam(winnerTeamId == TEAM_NEUTRAL ? TEAM_HORDE : winnerTeamId));
             oldTeamRating = winnerTeamId == TEAM_HORDE ? oldTeamRatingHorde : oldTeamRatingAlliance;
             ratingModifier = int32(winnerArenaTeam->GetRating()) - oldTeamRating;
+
+            atStats.SeasonWins += 1;
+            atStats.WeekWins += 1;
         } else {
             ArenaTeam* loserArenaTeam  = sArenaTeamMgr->GetArenaTeamById(bg->GetArenaTeamIdForTeam(winnerTeamId == TEAM_NEUTRAL ? TEAM_ALLIANCE : bg->GetOtherTeamId(winnerTeamId)));
             oldTeamRating = winnerTeamId != TEAM_HORDE ? oldTeamRatingHorde : oldTeamRatingAlliance;
@@ -586,6 +589,9 @@ void Solo3v3BG::OnBattlegroundEndReward(Battleground* bg, Player* player, TeamId
             atStats.Rating = 0;
         else
             atStats.Rating += ratingModifier;
+
+        atStats.SeasonGames += 1;
+        atStats.WeekGames += 1;
 
         // Update team's rank, start with rank 1 and increase until no team with more rating was found
         atStats.Rank = 1;

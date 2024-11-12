@@ -43,6 +43,9 @@ uint32 Solo3v3::GetAverageMMR(ArenaTeam* team)
 
 void Solo3v3::CountAsLoss(Player* player, bool isInProgress)
 {
+    if (player->IsSpectator())
+        return;
+
     ArenaTeam* plrArenaTeam = sArenaTeamMgr->GetArenaTeamById(player->GetArenaTeamId(ARENA_SLOT_SOLO_3v3));
 
     if (!plrArenaTeam)

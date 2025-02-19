@@ -96,13 +96,13 @@ class PlayerScript3v3Arena : public PlayerScript
 public:
     PlayerScript3v3Arena() : PlayerScript("player_script_3v3_arena") {}
 
-    void OnLogin(Player* pPlayer) override;
-    void OnGetArenaPersonalRating(Player* player, uint8 slot, uint32& rating) override;
-    void OnGetMaxPersonalArenaRatingRequirement(const Player* player, uint32 minslot, uint32& maxArenaRating) const override;
-    void OnGetArenaTeamId(Player* player, uint8 slot, uint32& result) override;
-    bool NotSetArenaTeamInfoField(Player* player, uint8 slot, ArenaTeamInfoType type, uint32 value) override;
-    bool CanBattleFieldPort(Player* player, uint8 arenaType, BattlegroundTypeId BGTypeID, uint8 action) override;
-    void OnBattlegroundDesertion(Player* player, const BattlegroundDesertionType type) override;
+    void OnPlayerLogin(Player* pPlayer) override;
+    void OnPlayerGetArenaPersonalRating(Player* player, uint8 slot, uint32& rating) override;
+    void OnPlayerGetMaxPersonalArenaRatingRequirement(const Player* player, uint32 minslot, uint32& maxArenaRating) const override;
+    void OnPlayerGetArenaTeamId(Player* player, uint8 slot, uint32& result) override;
+    bool OnPlayerNotSetArenaTeamInfoField(Player* player, uint8 slot, ArenaTeamInfoType type, uint32 value) override;
+    bool OnPlayerCanBattleFieldPort(Player* player, uint8 arenaType, BattlegroundTypeId BGTypeID, uint8 action) override;
+    void OnPlayerBattlegroundDesertion(Player* player, const BattlegroundDesertionType type) override;
 };
 
 class Arena_SC : public ArenaScript

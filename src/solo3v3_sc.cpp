@@ -695,7 +695,7 @@ void Arena_SC::OnArenaStart(Battleground* bg)
     sSolo->CheckStartSolo3v3Arena(bg);
 }
 
-void PlayerScript3v3Arena::OnBattlegroundDesertion(Player* player, const BattlegroundDesertionType type)
+void PlayerScript3v3Arena::OnPlayerBattlegroundDesertion(Player* player, const BattlegroundDesertionType type)
 {
     Battleground* bg = ((BattlegroundMap*)player->FindMap())->GetBG();
 
@@ -772,14 +772,14 @@ void PlayerScript3v3Arena::OnBattlegroundDesertion(Player* player, const Battleg
     }
 }
 
-void PlayerScript3v3Arena::OnLogin(Player* pPlayer)
+void PlayerScript3v3Arena::OnPlayerLogin(Player* pPlayer)
 {
     if (sConfigMgr->GetOption<bool>("Solo.3v3.ShowMessageOnLogin", false)) {
         ChatHandler(pPlayer->GetSession()).SendSysMessage("This server is running the |cff4CFF00Arena solo Q 3v3 |rmodule.");
     }
 }
 
-void PlayerScript3v3Arena::OnGetArenaPersonalRating(Player* player, uint8 slot, uint32& rating)
+void PlayerScript3v3Arena::OnPlayerGetArenaPersonalRating(Player* player, uint8 slot, uint32& rating)
 {
     if (slot == ARENA_SLOT_SOLO_3v3)
     {
@@ -790,7 +790,7 @@ void PlayerScript3v3Arena::OnGetArenaPersonalRating(Player* player, uint8 slot, 
     }
 }
 
-void PlayerScript3v3Arena::OnGetMaxPersonalArenaRatingRequirement(const Player* player, uint32 minslot, uint32& maxArenaRating) const
+void PlayerScript3v3Arena::OnPlayerGetMaxPersonalArenaRatingRequirement(const Player* player, uint32 minslot, uint32& maxArenaRating) const
 {
     if (!sConfigMgr->GetOption<bool>("Solo.3v3.VendorRating", true))
     {
@@ -806,7 +806,7 @@ void PlayerScript3v3Arena::OnGetMaxPersonalArenaRatingRequirement(const Player* 
     }
 }
 
-void PlayerScript3v3Arena::OnGetArenaTeamId(Player* player, uint8 slot, uint32& result)
+void PlayerScript3v3Arena::OnPlayerGetArenaTeamId(Player* player, uint8 slot, uint32& result)
 {
     if (!player)
         return;
@@ -815,7 +815,7 @@ void PlayerScript3v3Arena::OnGetArenaTeamId(Player* player, uint8 slot, uint32& 
         result = player->GetArenaTeamIdFromDB(player->GetGUID(), ARENA_TYPE_3v3_SOLO);
 }
 
-bool PlayerScript3v3Arena::NotSetArenaTeamInfoField(Player* player, uint8 slot, ArenaTeamInfoType /* type */, uint32 /* value */)
+bool PlayerScript3v3Arena::OnPlayerNotSetArenaTeamInfoField(Player* player, uint8 slot, ArenaTeamInfoType /* type */, uint32 /* value */)
 {
     if (!player)
         return false;
@@ -828,7 +828,7 @@ bool PlayerScript3v3Arena::NotSetArenaTeamInfoField(Player* player, uint8 slot, 
     return true;
 }
 
-bool PlayerScript3v3Arena::CanBattleFieldPort(Player* player, uint8 arenaType, BattlegroundTypeId BGTypeID, uint8 /*action*/)
+bool PlayerScript3v3Arena::OnPlayerCanBattleFieldPort(Player* player, uint8 arenaType, BattlegroundTypeId BGTypeID, uint8 /*action*/)
 {
     if (!player)
         return false;

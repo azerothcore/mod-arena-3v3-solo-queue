@@ -64,7 +64,12 @@ private:
 class Solo3v3BG : public AllBattlegroundScript
 {
 public:
-    Solo3v3BG() : AllBattlegroundScript("Solo3v3_BG") {}
+    Solo3v3BG() : AllBattlegroundScript("Solo3v3_BG", {
+        ALLBATTLEGROUNDHOOK_ON_QUEUE_UPDATE,
+        ALLBATTLEGROUNDHOOK_ON_QUEUE_UPDATE_VALIDITY,
+        ALLBATTLEGROUNDHOOK_ON_BATTLEGROUND_DESTROY,
+        ALLBATTLEGROUNDHOOK_ON_BATTLEGROUND_END_REWARD
+    }) {}
 
     void OnQueueUpdate(BattlegroundQueue* queue, uint32 /*diff*/, BattlegroundTypeId bgTypeId, BattlegroundBracketId bracket_id, uint8 arenaType, bool isRated, uint32 /*arenaRatedTeamId*/) override;
     bool OnQueueUpdateValidity(BattlegroundQueue* /* queue */, uint32 /*diff*/, BattlegroundTypeId /* bgTypeId */, BattlegroundBracketId /* bracket_id */, uint8 arenaType, bool /* isRated */, uint32 /*arenaRatedTeamId*/) override;
@@ -75,7 +80,9 @@ public:
 class ConfigLoader3v3Arena : public WorldScript
 {
 public:
-    ConfigLoader3v3Arena() : WorldScript("config_loader_3v3_arena") {}
+    ConfigLoader3v3Arena() : WorldScript("config_loader_3v3_arena", {
+        WORLDHOOK_ON_AFTER_CONFIG_LOAD
+    }) {}
 
     virtual void OnAfterConfigLoad(bool /*Reload*/) override;
 };
@@ -83,7 +90,12 @@ public:
 class Team3v3arena : public ArenaTeamScript
 {
 public:
-    Team3v3arena() : ArenaTeamScript("team_3v3_arena") {}
+    Team3v3arena() : ArenaTeamScript("team_3v3_arena", {
+        ARENATEAMHOOK_ON_GET_SLOT_BY_TYPE,
+        ARENATEAMHOOK_ON_GET_ARENA_POINTS,
+        ARENATEAMHOOK_ON_TYPEID_TO_QUEUEID,
+        ARENATEAMHOOK_ON_QUEUEID_TO_ARENA_TYPE
+    }) {}
 
     void OnGetSlotByType(const uint32 type, uint8& slot) override;
     void OnGetArenaPoints(ArenaTeam* at, float& points) override;
@@ -94,7 +106,15 @@ public:
 class PlayerScript3v3Arena : public PlayerScript
 {
 public:
-    PlayerScript3v3Arena() : PlayerScript("player_script_3v3_arena") {}
+    PlayerScript3v3Arena() : PlayerScript("player_script_3v3_arena", {
+        PLAYERHOOK_ON_LOGIN,
+        PLAYERHOOK_ON_GET_ARENA_PERSONAL_RATING,
+        PLAYERHOOK_ON_GET_MAX_PERSONAL_ARENA_RATING_REQUIREMENT,
+        PLAYERHOOK_ON_GET_ARENA_TEAM_ID,
+        PLAYERHOOK_NOT_SET_ARENA_TEAM_INFO_FIELD,
+        PLAYERHOOK_CAN_BATTLEFIELD_PORT,
+        PLAYERHOOK_ON_BATTLEGROUND_DESERTION
+    }) {}
 
     void OnPlayerLogin(Player* pPlayer) override;
     void OnPlayerGetArenaPersonalRating(Player* player, uint8 slot, uint32& rating) override;
@@ -108,7 +128,12 @@ public:
 class Arena_SC : public ArenaScript
 {
 public:
-    Arena_SC() : ArenaScript("Arena_SC") { }
+    Arena_SC() : ArenaScript("Arena_SC", {
+        ARENAHOOK_CAN_ADD_MEMBER,
+        ARENAHOOK_ON_GET_POINTS,
+        ARENAHOOK_CAN_SAVE_TO_DB,
+        ARENAHOOK_ON_ARENA_START
+    }) { }
 
     bool CanAddMember(ArenaTeam* team, ObjectGuid /* playerGuid */) override
     {
@@ -147,7 +172,9 @@ public:
 class Solo3v3Spell : public SpellSC
 {
 public:
-    Solo3v3Spell() : SpellSC("Solo3v3Spell") { }
+    Solo3v3Spell() : SpellSC("Solo3v3Spell", {
+        ALLSPELLHOOK_CAN_SELECT_SPEC_TALENT
+    }) { }
 
 
     bool CanSelectSpecTalent(Spell* spell) override

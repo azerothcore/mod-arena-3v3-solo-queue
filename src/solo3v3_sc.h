@@ -80,9 +80,9 @@ public:
 class ConfigLoader3v3Arena : public WorldScript
 {
 public:
-    ConfigLoader3v3Arena() : WorldScript("config_loader_3v3_arena", {
+    ConfigLoader3v3Arena() : WorldScript("config_loader_3v3_arena", 
         WORLDHOOK_ON_AFTER_CONFIG_LOAD
-    }) {}
+    ) {}
 
     virtual void OnAfterConfigLoad(bool /*Reload*/) override;
 };
@@ -172,9 +172,9 @@ public:
 class Solo3v3Spell : public SpellSC
 {
 public:
-    Solo3v3Spell() : SpellSC("Solo3v3Spell", {
+    Solo3v3Spell() : SpellSC("Solo3v3Spell", 
         ALLSPELLHOOK_CAN_SELECT_SPEC_TALENT
-    }) { }
+    ) { }
 
 
     bool CanSelectSpecTalent(Spell* spell) override

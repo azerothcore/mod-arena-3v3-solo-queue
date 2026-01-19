@@ -83,22 +83,33 @@ public:
             return false;
         }
 
-        if (!player->GetArenaTeamId(ARENA_SLOT_SOLO_3v3) && isRated)
+        if (isRated)
         {
-            // create solo3v3 team if player doesn't have it
-            if (!SoloCommand.CreateArenateam(player, nullptr))
-                return false;
+            if (!player->GetArenaTeamId(ARENA_SLOT_SOLO_3v3))
+            {
+                uint32 cost = sConfigMgr->GetOption<uint32>("Solo.3v3.Cost", 1);
 
-            handler->PSendSysMessage("Join again arena 3v3soloQ rated!");
-        }
-        else
-        {
-            if (!SoloCommand.ArenaCheckFullEquipAndTalents(player))
-                return false;
+                if (player->GetMoney() < cost)
+                {
+                    handler->PSendSysMessage("You need {} gold to create a Solo 3v3 arena team.", cost / GOLD);
+                    return false;
+                }
 
-            if (SoloCommand.JoinQueueArena(player, nullptr, isRated))
-                handler->PSendSysMessage("You have joined the solo 3v3 arena queue {}.", isRated ? "rated" : "unrated");
+                if (!SoloCommand.CreateArenateam(player, nullptr))
+                    return false;
+
+                player->ModifyMoney(-int32(cost));
+
+                handler->SendSysMessage("Solo 3v3 arena team created successfully. Use the command again to join the rated queue.");
+                return true;
+            }
         }
+
+        if (!SoloCommand.ArenaCheckFullEquipAndTalents(player))
+            return false;
+
+        if (SoloCommand.JoinQueueArena(player, nullptr, isRated))
+            handler->PSendSysMessage("You have joined the solo 3v3 arena queue {}.", isRated ? "rated" : "unrated");
 
         return true;
     }

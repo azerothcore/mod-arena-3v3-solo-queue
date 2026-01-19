@@ -52,16 +52,42 @@ void Solo3v3::CountAsLoss(Player* player, bool isInProgress)
         return;
 
     int32 ratingLoss = 0;
+    uint32 instanceId = 0;
+
+    bool playerLeftAlive = player->IsAlive();
+
+    if (Battleground* bg = player->GetBattleground())
+        instanceId = bg->GetInstanceID();
 
     // leave while arena is in progress
     if (isInProgress)
     {
-        ratingLoss = sConfigMgr->GetOption<int32>("Solo.3v3.RatingPenalty.LeaveDuringMatch", 24);
+        if (playerLeftAlive)
+        {
+            bool isFirstLeaver = instanceId && arenasWithDeserter.count(instanceId) == 0;
+            if (isFirstLeaver)
+            {
+                ratingLoss = sConfigMgr->GetOption<int32>("Solo.3v3.RatingPenalty.FirstLeaveDuringMatch", 50);
+
+                arenasWithDeserter.insert(instanceId);
+
+                if (sConfigMgr->GetOption<bool>("Solo.3v3.CastDeserterOnLeave", true))
+                {
+                    player->CastSpell(player, 26013, true);
+                }
+            }
+            else
+            {
+                ratingLoss = sConfigMgr->GetOption<int32>("Solo.3v3.RatingPenalty.LeaveDuringMatch", 24);
+            }
+        }
     }
+
     // leave while arena is in preparation || don't accept queue || logout while invited
     else
     {
         ratingLoss = sConfigMgr->GetOption<int32>("Solo.3v3.RatingPenalty.LeaveBeforeMatchStart", 50);
+        player->CastSpell(player, 26013, true);
     }
 
     ArenaTeamStats atStats = plrArenaTeam->GetStats();

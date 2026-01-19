@@ -17,9 +17,10 @@ INSERT INTO `npc_text` (`id`, `text0_0`, `text0_1`, `Probability0`) VALUES
 (1000004, @npc_text_3v3_soloq, @npc_text_3v3_soloq, 1);
 
 -- Command
-DELETE FROM `command` WHERE `name` IN ('qsolo', 'qsolo rated', 'qsolo unrated', 'testqsolo');
+DELETE FROM `command` WHERE `name` IN ('qsolo', 'qsolo rated', 'qsolo unrated', 'qsolo stats', 'testqsolo');
 INSERT INTO `command` (`name`, `security`, `help`) VALUES
 ('qsolo', 0, '.qsolo rated/unrated\nJoin arena 3v3soloQ rated or unrated'),
 ('qsolo rated', 0, 'Syntax .qsolo rated\nJoin arena 3v3soloQ rated'),
 ('qsolo unrated', 0, 'Syntax .qsolo unrated\nJoin arena 3v3soloQ unrated'),
+('qsolo stats', 0, 'Syntax .qsolo stats\nShow arena 3v3soloQ stats'),
 ('testqsolo', 4, '.testqsolo -> join arena 3v3soloQ for testing');

@@ -21,6 +21,7 @@ public:
         {
             { "rated",       HandleQueueArena3v3Rated,         SEC_PLAYER,        Console::No },
             { "unrated",     HandleQueueArena3v3UnRated,       SEC_PLAYER,        Console::No },
+            { "stats",       HandleQueueArenaSolo3v3Stats,     SEC_PLAYER,        Console::No },
         };
 
         static ChatCommandTable SoloCommandTable =
@@ -97,6 +98,53 @@ public:
 
             if (SoloCommand.JoinQueueArena(player, nullptr, isRated))
                 handler->PSendSysMessage("You have joined the solo 3v3 arena queue {}.", isRated ? "rated" : "unrated");
+        }
+
+        return true;
+    }
+
+    static bool HandleQueueArenaSolo3v3Stats(ChatHandler* handler, const char* /*args*/)
+    {
+        Player* player = handler->GetSession()->GetPlayer();
+        if (!player)
+            return false;
+
+        uint32 teamId = player->GetArenaTeamId(ARENA_SLOT_SOLO_3v3);
+        if (!teamId)
+        {
+            handler->SendSysMessage("You are not in a Solo 3v3 arena team.");
+            return true;
+        }
+
+        ArenaTeam* at = sArenaTeamMgr->GetArenaTeamById(teamId);
+        if (!at)
+        {
+            handler->SendSysMessage("Solo 3v3 arena team not found.");
+            return true;
+        }
+
+        ArenaTeamStats const& stats = at->GetStats();
+
+        std::stringstream s;
+        s << "=== Solo 3v3 Statistics ===";
+        s << "\nRating: " << stats.Rating;
+        s << "\nPersonal Rating: " << player->GetArenaPersonalRating(ARENA_SLOT_SOLO_3v3);
+        s << "\nRank: " << stats.Rank;
+        s << "\nSeason Games: " << stats.SeasonGames;
+        s << "\nSeason Wins: " << stats.SeasonWins;
+        s << "\nWeek Games: " << stats.WeekGames;
+        s << "\nWeek Wins: " << stats.WeekWins;
+
+        handler->PSendSysMessage("{}", s.str().c_str());
+
+        for (ArenaTeam::MemberList::const_iterator itr = at->GetMembers().begin();
+            itr != at->GetMembers().end(); ++itr)
+        {
+            if (itr->Guid == player->GetGUID())
+            {
+                handler->PSendSysMessage("Solo MMR: {}", itr->MatchMakerRating);
+                break;
+            }
         }
 
         return true;

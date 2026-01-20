@@ -133,6 +133,10 @@ void Solo3v3::CleanUp3v3SoloQ(Battleground* bg)
     // Cleanup temp arena teams for solo 3v3
     if (bg->isArena() && bg->GetArenaType() == ARENA_TYPE_3v3_SOLO)
     {
+        uint32 instanceId = bg->GetInstanceID();
+        if (instanceId)
+            arenasWithDeserter.erase(instanceId);
+
         ArenaTeam* tempAlliArenaTeam = sArenaTeamMgr->GetArenaTeamById(bg->GetArenaTeamIdForTeam(TEAM_ALLIANCE));
         ArenaTeam* tempHordeArenaTeam = sArenaTeamMgr->GetArenaTeamById(bg->GetArenaTeamIdForTeam(TEAM_HORDE));
 

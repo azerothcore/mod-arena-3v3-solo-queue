@@ -60,26 +60,17 @@ void Solo3v3::CountAsLoss(Player* player, bool isInProgress)
         instanceId = bg->GetInstanceID();
 
     // leave while arena is in progress
-    if (isInProgress)
+    if (isInProgress && playerLeftAlive)
     {
-        if (playerLeftAlive)
+        bool isFirstLeaver = instanceId && arenasWithDeserter.count(instanceId) == 0;
+        ratingLoss = sConfigMgr->GetOption<int32>(isFirstLeaver ? "Solo.3v3.RatingPenalty.FirstLeaveDuringMatch" : "Solo.3v3.RatingPenalty.LeaveDuringMatch", isFirstLeaver ? 50 : 24);
+
+        if (isFirstLeaver)
         {
-            bool isFirstLeaver = instanceId && arenasWithDeserter.count(instanceId) == 0;
-            if (isFirstLeaver)
-            {
-                ratingLoss = sConfigMgr->GetOption<int32>("Solo.3v3.RatingPenalty.FirstLeaveDuringMatch", 50);
+            arenasWithDeserter.insert(instanceId);
 
-                arenasWithDeserter.insert(instanceId);
-
-                if (sConfigMgr->GetOption<bool>("Solo.3v3.CastDeserterOnLeave", true))
-                {
-                    player->CastSpell(player, 26013, true);
-                }
-            }
-            else
-            {
-                ratingLoss = sConfigMgr->GetOption<int32>("Solo.3v3.RatingPenalty.LeaveDuringMatch", 24);
-            }
+            if (sConfigMgr->GetOption<bool>("Solo.3v3.CastDeserterOnLeave", true))
+                player->CastSpell(player, 26013, true);
         }
     }
 

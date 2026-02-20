@@ -23,4 +23,4 @@ INSERT INTO `command` (`name`, `security`, `help`) VALUES
 ('qsolo rated', 0, 'Syntax .qsolo rated\nJoin arena 3v3soloQ rated'),
 ('qsolo unrated', 0, 'Syntax .qsolo unrated\nJoin arena 3v3soloQ unrated'),
 ('qsolo stats', 0, 'Syntax .qsolo stats\nShow arena 3v3soloQ stats'),
-('testqsolo', 4, '.testqsolo -> join arena 3v3soloQ for testing');
+('testqsolo', 3, '.testqsolo -> join arena 3v3soloQ for testing');

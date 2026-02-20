@@ -24,6 +24,18 @@ Solo.3v3.EnableTestingCommand = 1
 
 
 Solo.3v3.FilterTalents = 0
+
+#
+#    Solo.3v3.AvoidSameTeamIgnore
+#        Description: When enabled, the matchmaker tries to avoid placing players who have
+#                     each other on their ignore list on the same team.
+#                     If it is unavoidable (not enough other players in queue), ignored
+#                     players may still end up on the same team.
+#        Default:     1 - (true)
+#                     0 - (false)
+
+Solo.3v3.AvoidSameTeamIgnore = 1
+
 Arena.CheckEquipAndTalents = 0
 Arena.3v3.BlockForbiddenTalents = 0
 Solo.3v3.CastDeserterOnAfk = 1

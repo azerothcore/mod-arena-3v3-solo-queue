@@ -23,6 +23,7 @@
 #include "ScriptMgr.h"
 #include "Chat.h"
 #include "DisableMgr.h"
+#include "SocialMgr.h"
 
 Solo3v3* Solo3v3::instance()
 {
@@ -192,6 +193,7 @@ bool Solo3v3::CheckSolo3v3Arena(BattlegroundQueue* queue, BattlegroundBracketId 
     uint32 MinPlayersPerTeam = sBattlegroundMgr->isArenaTesting() ? 1 : 3;
 
     bool filterTalents = sConfigMgr->GetOption<bool>("Solo.3v3.FilterTalents", false);
+    bool avoidIgnore = sConfigMgr->GetOption<bool>("Solo.3v3.AvoidSameTeamIgnore", true);
 
     uint8 factionGroupTypeAlliance =  isRated ? BG_QUEUE_PREMADE_ALLIANCE : BG_QUEUE_NORMAL_ALLIANCE;
     uint8 factionGroupTypeHorde = isRated ? BG_QUEUE_PREMADE_HORDE : BG_QUEUE_NORMAL_HORDE;
@@ -226,35 +228,41 @@ bool Solo3v3::CheckSolo3v3Arena(BattlegroundQueue* queue, BattlegroundBracketId 
                 else
                     playerSlotIndex = GetFirstAvailableSlot(soloTeam);
 
-                // is slot free in alliance team?
-                if ((filterTalents && soloTeam[TEAM_ALLIANCE][playerSlotIndex] == false) || (!filterTalents && queue->m_SelectionPools[TEAM_ALLIANCE].GetPlayerCount() != MinPlayersPerTeam))
-                {
-                    if (queue->m_SelectionPools[TEAM_ALLIANCE].AddGroup((*itr), MinPlayersPerTeam)) // added successfully?
-                    {
-                        soloTeam[TEAM_ALLIANCE][playerSlotIndex] = true; // okay take this slot
+                bool allianceHasRoom = (filterTalents && !soloTeam[TEAM_ALLIANCE][playerSlotIndex]) ||
+                    (!filterTalents && queue->m_SelectionPools[TEAM_ALLIANCE].GetPlayerCount() != MinPlayersPerTeam);
+                bool hordeHasRoom = (filterTalents && !soloTeam[TEAM_HORDE][playerSlotIndex]) ||
+                    (!filterTalents && queue->m_SelectionPools[TEAM_HORDE].GetPlayerCount() != MinPlayersPerTeam);
 
-                        if ((*itr)->teamId != TEAM_ALLIANCE) // move to other team
-                        {
-                            (*itr)->teamId = TEAM_ALLIANCE;
-                            (*itr)->GroupType = factionGroupTypeAlliance;
-                            queue->m_QueuedGroups[bracket_id][factionGroupTypeAlliance].push_front((*itr));
-                            itr = queue->m_QueuedGroups[bracket_id][factionGroupTypeHorde].erase(itr);
-                            return CheckSolo3v3Arena(queue, bracket_id, isRated);
-                        }
-                    }
-                }
-                else if ((filterTalents && soloTeam[TEAM_HORDE][playerSlotIndex] == false) || !filterTalents) // nope? and in horde team?
-                {
-                    if (queue->m_SelectionPools[TEAM_HORDE].AddGroup((*itr), MinPlayersPerTeam))
-                    {
-                        soloTeam[TEAM_HORDE][playerSlotIndex] = true;
+                // If avoid-ignore is enabled and only alliance has an ignore conflict, prefer horde
+                bool preferHorde = avoidIgnore && allianceHasRoom && hordeHasRoom &&
+                    HasIgnoreConflict(plr, queue, TEAM_ALLIANCE) &&
+                    !HasIgnoreConflict(plr, queue, TEAM_HORDE);
 
-                        if ((*itr)->teamId != TEAM_HORDE) // move to other team
+                uint32 firstTeam  = preferHorde ? TEAM_HORDE : TEAM_ALLIANCE;
+                uint32 secondTeam = preferHorde ? TEAM_ALLIANCE : TEAM_HORDE;
+
+                bool addedToTeam = false;
+                for (int attempt = 0; attempt < 2 && !addedToTeam; ++attempt)
+                {
+                    uint32 tryTeam = (attempt == 0) ? firstTeam : secondTeam;
+                    bool hasRoom = (tryTeam == TEAM_ALLIANCE) ? allianceHasRoom : hordeHasRoom;
+                    if (!hasRoom)
+                        continue;
+
+                    if (queue->m_SelectionPools[tryTeam].AddGroup(*itr, MinPlayersPerTeam))
+                    {
+                        soloTeam[tryTeam][playerSlotIndex] = true;
+                        addedToTeam = true;
+
+                        if ((*itr)->teamId != (TeamId)tryTeam) // move to other team
                         {
-                            (*itr)->teamId = TEAM_HORDE;
-                            (*itr)->GroupType = factionGroupTypeHorde;
-                            queue->m_QueuedGroups[bracket_id][factionGroupTypeHorde].push_front((*itr));
-                            itr = queue->m_QueuedGroups[bracket_id][factionGroupTypeAlliance].erase(itr);
+                            TeamId currentTeam = (*itr)->teamId;
+                            uint8 targetGroupType = (tryTeam == TEAM_ALLIANCE) ? factionGroupTypeAlliance : factionGroupTypeHorde;
+                            uint8 sourceGroupType = (currentTeam == TEAM_ALLIANCE) ? factionGroupTypeAlliance : factionGroupTypeHorde;
+                            (*itr)->teamId = (TeamId)tryTeam;
+                            (*itr)->GroupType = targetGroupType;
+                            queue->m_QueuedGroups[bracket_id][targetGroupType].push_front(*itr);
+                            itr = queue->m_QueuedGroups[bracket_id][sourceGroupType].erase(itr);
                             return CheckSolo3v3Arena(queue, bracket_id, isRated);
                         }
                     }
@@ -397,6 +405,24 @@ Solo3v3TalentCat Solo3v3::GetTalentCatForSolo3v3(Player* player)
     }
 
     return talCat;
+}
+
+bool Solo3v3::HasIgnoreConflict(Player* candidate, BattlegroundQueue* queue, uint32 teamId)
+{
+    for (auto const& group : queue->m_SelectionPools[teamId].SelectedGroups)
+    {
+        for (auto const& existingGuid : group->Players)
+        {
+            Player* existingPlayer = ObjectAccessor::FindPlayer(existingGuid);
+            if (!existingPlayer)
+                continue;
+
+            if (candidate->GetSocial()->HasIgnore(existingGuid) ||
+                existingPlayer->GetSocial()->HasIgnore(candidate->GetGUID()))
+                return true;
+        }
+    }
+    return false;
 }
 
 Solo3v3TalentCat Solo3v3::GetFirstAvailableSlot(bool soloTeam[][MAX_TALENT_CAT]) {

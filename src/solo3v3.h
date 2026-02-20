@@ -131,6 +131,9 @@ public:
     Solo3v3TalentCat GetTalentCatForSolo3v3(Player* player);
     Solo3v3TalentCat GetFirstAvailableSlot(bool soloTeam[][MAX_TALENT_CAT]);
 
+    // Returns true if candidate has an ignore relationship with any player already in the given team's selection pool
+    bool HasIgnoreConflict(Player* candidate, BattlegroundQueue* queue, uint32 teamId);
+
 private:
     std::unordered_set<uint32> arenasWithDeserter;
 };

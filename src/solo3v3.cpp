@@ -60,6 +60,10 @@ void Solo3v3::CountAsLoss(Player* player, bool isInProgress)
     if (Battleground* bg = player->GetBattleground())
         instanceId = bg->GetInstanceID();
 
+    // leave while arena is in progress but player is already dead - no penalty
+    if (isInProgress && !playerLeftAlive)
+        return;
+
     // leave while arena is in progress
     if (isInProgress && playerLeftAlive)
     {

@@ -287,7 +287,17 @@ bool Solo3v3::CheckSolo3v3Arena(BattlegroundQueue* queue, BattlegroundBracketId 
                             uint8 sourceGroupType = (currentTeam == TEAM_ALLIANCE) ? factionGroupTypeAlliance : factionGroupTypeHorde;
                             (*itr)->teamId = (TeamId)tryTeam;
                             (*itr)->GroupType = targetGroupType;
-                            queue->m_QueuedGroups[bracket_id][targetGroupType].push_front(*itr);
+
+                            // Insert in sorted order by JoinTime to preserve FIFO priority.
+                            // Using push_front would give this player unfair priority over
+                            // others who have been waiting longer in the destination bucket.
+                            auto& targetList = queue->m_QueuedGroups[bracket_id][targetGroupType];
+                            auto insertPos = targetList.begin();
+
+                            while (insertPos != targetList.end() && (*insertPos)->JoinTime <= (*itr)->JoinTime)
+                                ++insertPos;
+
+                            targetList.insert(insertPos, *itr);
                             itr = queue->m_QueuedGroups[bracket_id][sourceGroupType].erase(itr);
                             return CheckSolo3v3Arena(queue, bracket_id, isRated);
                         }

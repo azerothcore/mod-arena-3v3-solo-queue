@@ -233,11 +233,17 @@ bool Solo3v3::CheckSolo3v3Arena(BattlegroundQueue* queue, BattlegroundBracketId 
                 auto getEffectiveSlot = [&](uint32 team) -> Solo3v3TalentCat {
                     if (!filterTalents)
                         return playerTalentCat;
+
                     if (playerTalentCat == HEALER)
                         return soloTeam[team][HEALER] ? MAX_TALENT_CAT : HEALER;
+
                     // DPS (MELEE or RANGE): take first free DPS slot
-                    if (!soloTeam[team][MELEE]) return MELEE;
-                    if (!soloTeam[team][RANGE]) return RANGE;
+                    if (!soloTeam[team][MELEE])
+                        return MELEE;
+
+                    if (!soloTeam[team][RANGE])
+                        return RANGE;
+
                     return MAX_TALENT_CAT;
                 };
 

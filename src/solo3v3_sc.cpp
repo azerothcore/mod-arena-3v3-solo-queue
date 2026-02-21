@@ -562,26 +562,53 @@ void Solo3v3BG::OnBattlegroundEndReward(Battleground* bg, Player* player, TeamId
             return;
 
         ArenaTeamStats atStats = plrArenaTeam->GetStats();
+
+        bgArenaTeamsRating[bg->GetInstanceID()].playersCount += 1;
+
+        atStats.SeasonGames += 1;
+        atStats.WeekGames += 1;
+
+        // Draw: do not modify rating or MMR
+        if (winnerTeamId == TEAM_NEUTRAL)
+        {
+            for (ArenaTeam::MemberList::iterator itr = plrArenaTeam->GetMembers().begin(); itr != plrArenaTeam->GetMembers().end(); ++itr)
+            {
+                if (itr->Guid == player->GetGUID())
+                {
+                    itr->WeekGames += 1;
+                    itr->SeasonGames += 1;
+                    break;
+                }
+            }
+
+            plrArenaTeam->SetArenaTeamStats(atStats);
+            plrArenaTeam->NotifyStatsChanged();
+            plrArenaTeam->SaveToDB(true);
+
+            if (bgArenaTeamsRating[bg->GetInstanceID()].playersCount == bg->GetPlayersSize())
+                bgArenaTeamsRating.erase(bg->GetInstanceID());
+
+            return;
+        }
+
         int32 ratingModifier;
         int32 oldTeamRating;
 
         uint32 oldTeamRatingAlliance = bgArenaTeamsRating[bg->GetInstanceID()].allianceRating;
         uint32 oldTeamRatingHorde = bgArenaTeamsRating[bg->GetInstanceID()].hordeRating;
 
-        bgArenaTeamsRating[bg->GetInstanceID()].playersCount += 1;
-
         TeamId bgTeamId = player->GetBgTeamId();
         const bool isPlayerWinning = bgTeamId == winnerTeamId;
         if (isPlayerWinning) {
-            ArenaTeam* winnerArenaTeam = sArenaTeamMgr->GetArenaTeamById(bg->GetArenaTeamIdForTeam(winnerTeamId == TEAM_NEUTRAL ? TEAM_HORDE : winnerTeamId));
+            ArenaTeam* winnerArenaTeam = sArenaTeamMgr->GetArenaTeamById(bg->GetArenaTeamIdForTeam(winnerTeamId));
             oldTeamRating = winnerTeamId == TEAM_HORDE ? oldTeamRatingHorde : oldTeamRatingAlliance;
             ratingModifier = int32(winnerArenaTeam->GetRating()) - oldTeamRating;
 
             atStats.SeasonWins += 1;
             atStats.WeekWins += 1;
         } else {
-            ArenaTeam* loserArenaTeam  = sArenaTeamMgr->GetArenaTeamById(bg->GetArenaTeamIdForTeam(winnerTeamId == TEAM_NEUTRAL ? TEAM_ALLIANCE : bg->GetOtherTeamId(winnerTeamId)));
-            oldTeamRating = winnerTeamId != TEAM_HORDE ? oldTeamRatingHorde : oldTeamRatingAlliance;
+            ArenaTeam* loserArenaTeam  = sArenaTeamMgr->GetArenaTeamById(bg->GetArenaTeamIdForTeam(bg->GetOtherTeamId(winnerTeamId)));
+            oldTeamRating = winnerTeamId == TEAM_HORDE ? oldTeamRatingAlliance : oldTeamRatingHorde;
             ratingModifier = int32(loserArenaTeam->GetRating()) - oldTeamRating;
         }
 
@@ -589,9 +616,6 @@ void Solo3v3BG::OnBattlegroundEndReward(Battleground* bg, Player* player, TeamId
             atStats.Rating = 0;
         else
             atStats.Rating += ratingModifier;
-
-        atStats.SeasonGames += 1;
-        atStats.WeekGames += 1;
 
         // Update team's rank, start with rank 1 and increase until no team with more rating was found
         atStats.Rank = 1;
@@ -612,12 +636,9 @@ void Solo3v3BG::OnBattlegroundEndReward(Battleground* bg, Player* player, TeamId
                 if (isPlayerWinning) {
                     itr->WeekWins += 1;
                     itr->SeasonWins += 1;
-                    // itr->MatchMakerRating = bg->GetArenaMatchmakerRating(winnerTeamId);
                     itr->MatchMakerRating += ratingModifier;
                     itr->MaxMMR = std::max(itr->MaxMMR, itr->MatchMakerRating);
                 } else {
-                    // itr->MatchMakerRating = bg->GetArenaMatchmakerRating(bg->GetOtherTeamId(winnerTeamId));
-
                     if (int32(itr->MatchMakerRating) + ratingModifier < 0)
                         itr->MatchMakerRating = 0;
                     else

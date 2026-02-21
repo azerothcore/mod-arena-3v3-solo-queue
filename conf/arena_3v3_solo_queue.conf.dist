@@ -30,10 +30,10 @@ Solo.3v3.FilterTalents = 0
 #        Description: When enabled, the matchmaker avoids placing players who have each other
 #                     on their ignore list on the same team. Falls back to placing them together
 #                     if there are no other options in the queue.
-#        Default:     1 - (true)
-#                     0 - (false)
+#        Default:     0 - (false)
+#                     1 - (true)
 
-Solo.3v3.AvoidSameTeamIgnore = 1
+Solo.3v3.AvoidSameTeamIgnore = 0
 
 Arena.CheckEquipAndTalents = 0
 Arena.3v3.BlockForbiddenTalents = 0

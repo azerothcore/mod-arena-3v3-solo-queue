@@ -5,10 +5,8 @@ echo "Codestyle check script:"
 echo
 
 # Directories/files to check — scoped to the matchmaking logic and test code.
-# The legacy source files (solo3v3*.cpp/h) pre-date this check and are
-# excluded to avoid false positives from their existing formatting.
 CHECK_PATHS=(
-    "src/MatchmakingComposer.h"
+    "src"
     "tests"
 )
 

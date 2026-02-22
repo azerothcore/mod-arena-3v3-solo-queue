@@ -19,6 +19,7 @@
 #include "ArenaTeamMgr.h"
 #include "BattlegroundMgr.h"
 #include "Config.h"
+#include "GameTime.h"
 #include "Log.h"
 #include "ScriptMgr.h"
 #include "Chat.h"
@@ -234,6 +235,8 @@ bool Solo3v3::CheckSolo3v3Arena(BattlegroundQueue* queue, BattlegroundBracketId 
 
                 // When filterTalents is on, DPS players (MELEE/RANGE) can fill any free DPS slot,
                 // allowing teams to form with any 2 DPS + 1 healer instead of requiring melee+ranged+healer.
+                // A 3rd DPS slot is also allowed (using MAGE as placeholder) so that an all-DPS team
+                // (3 DPS vs 3 DPS) can start when no healers are present in the queue at all.
                 auto getEffectiveSlot = [&](uint32 team) -> Solo3v3TalentCat {
                     if (!filterTalents)
                         return playerTalentCat;
@@ -247,6 +250,14 @@ bool Solo3v3::CheckSolo3v3Arena(BattlegroundQueue* queue, BattlegroundBracketId 
 
                     if (!soloTeam[team][RANGE])
                         return RANGE;
+
+                    // Allow a 3rd DPS slot only when the team has no healer yet (all-DPS team)
+                    // and the player has been waiting at least Solo.3v3.FilterTalents.AllDPSTimer seconds.
+                    // MAGE enum value is reused here as a "3rd DPS" placeholder slot.
+                    uint32 allDpsTimerMs = sConfigMgr->GetOption<uint32>("Solo.3v3.FilterTalents.AllDPSTimer", 60) * 1000;
+                    if (!soloTeam[team][HEALER] && !soloTeam[team][MAGE] &&
+                        (*itr)->JoinTime + allDpsTimerMs <= GameTime::GetGameTimeMS().count())
+                        return MAGE;
 
                     return MAX_TALENT_CAT;
                 };
@@ -312,6 +323,12 @@ bool Solo3v3::CheckSolo3v3Arena(BattlegroundQueue* queue, BattlegroundBracketId 
         for (int j = 0; j < MAX_TALENT_CAT; j++)
             if (soloTeam[i][j])
                 countAll++;
+
+    // When filterTalents is on, require symmetric healer composition: both teams must have a healer
+    // (standard 2 DPS + 1 healer per side) or neither must have one (all-DPS 3v3).
+    // This prevents unbalanced matches like 3 DPS vs 2 DPS + 1 healer from starting.
+    if (filterTalents && countAll == MinPlayersPerTeam * 2)
+        return soloTeam[TEAM_ALLIANCE][HEALER] == soloTeam[TEAM_HORDE][HEALER];
 
     return countAll == MinPlayersPerTeam * 2 || (!filterTalents && queue->m_SelectionPools[TEAM_ALLIANCE].GetPlayerCount() + queue->m_SelectionPools[TEAM_HORDE].GetPlayerCount() == MinPlayersPerTeam * 2);
 }

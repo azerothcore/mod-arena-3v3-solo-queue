@@ -35,7 +35,7 @@ protected:
     // ── Helpers ──────────────────────────────────────────────────────────────
 
     /// Build a candidate list from (role, mmr) pairs.
-    /// @p baseJoinTime is applied to all entries (joinTime order = insertion order).
+    /// @p baseJoinTime is applied to all entries. classId defaults to 0.
     std::vector<QueuedCandidate> MakeCandidates(
         std::vector<std::pair<PlayerRole, uint32_t>> const& specs,
         uint32_t baseJoinTime = 0) const
@@ -43,8 +43,46 @@ protected:
         std::vector<QueuedCandidate> out;
         uint32_t id = 1;
         for (auto const& [role, mmr] : specs)
-            out.push_back({id++, role, mmr, baseJoinTime});
+            out.push_back({id++, role, mmr, baseJoinTime, 0});
         return out;
+    }
+
+    /// Build a candidate list from (role, mmr, classId) tuples.
+    std::vector<QueuedCandidate> MakeCandidatesWithClass(
+        std::vector<std::tuple<PlayerRole, uint32_t, uint8_t>> const& specs,
+        uint32_t baseJoinTime = 0) const
+    {
+        std::vector<QueuedCandidate> out;
+        uint32_t id = 1;
+        for (auto const& [role, mmr, cls] : specs)
+            out.push_back({id++, role, mmr, baseJoinTime, cls});
+        return out;
+    }
+
+    /// Count how many unique class IDs appear in the given team.
+    uint32_t CountUniqueClasses(
+        std::vector<uint32_t> const&         indices,
+        std::vector<QueuedCandidate> const&  pool) const
+    {
+        std::vector<uint8_t> classes;
+        for (uint32_t i : indices)
+            classes.push_back(pool[i].classId);
+        std::sort(classes.begin(), classes.end());
+        classes.erase(std::unique(classes.begin(), classes.end()), classes.end());
+        return static_cast<uint32_t>(classes.size());
+    }
+
+    /// Returns true if a team contains two candidates with the same class ID.
+    bool TeamHasDuplicateClass(
+        std::vector<uint32_t> const&         indices,
+        std::vector<QueuedCandidate> const&  pool) const
+    {
+        for (uint32_t i = 0; i < indices.size(); ++i)
+            for (uint32_t j = i + 1; j < indices.size(); ++j)
+                if (pool[indices[i]].classId == pool[indices[j]].classId &&
+                    pool[indices[i]].classId != 0)
+                    return true;
+        return false;
     }
 
     /// Count how many candidates in @p indices are healers.
@@ -518,4 +556,187 @@ TEST_F(MatchmakingTest, FullPipeline_VariedMMR_AlwaysOneHealerTwoDPSPerTeam)
         EXPECT_EQ(result.team2Indices.size(), 3u)
             << "Config " << ci << ": team 2 must have 3 players";
     }
+}
+
+// ── PreventClassStacking ──────────────────────────────────────────────────────
+// WoW class IDs referenced below (from SharedDefines.h):
+//   1=Warrior  2=Paladin  3=Hunter  4=Rogue  5=Priest
+//   6=DeathKnight  7=Shaman  8=Mage  9=Warlock  11=Druid
+
+/// Test 18: With PreventClassStacking disabled (level 0), two players of the
+/// same class on the same team must be accepted.
+TEST_F(MatchmakingTest, ClassStacking_Disabled_SameClassAllowed)
+{
+    // Two Warriors (class 1) as DPS — should land on the same team freely
+    auto selected = MakeCandidatesWithClass({
+        {PlayerRole::HEALER, 1500, 5},  // Priest healer
+        {PlayerRole::HEALER, 1500, 7},  // Shaman healer
+        {PlayerRole::DPS,    1500, 1},  // Warrior
+        {PlayerRole::DPS,    1500, 1},  // Warrior (duplicate class)
+        {PlayerRole::DPS,    1500, 4},  // Rogue
+        {PlayerRole::DPS,    1500, 4},  // Rogue (duplicate class)
+    });
+
+    // level 0 = disabled
+    auto result = composer.FindBestTeamSplit(selected, TEAM_SIZE, true, false, 0, 0);
+
+    ASSERT_TRUE(result.valid) << "With stacking disabled, a match must always form";
+}
+
+/// Test 19: With PreventClassStacking = 1 (all roles), two players of the same
+/// class must never appear on the same team.
+TEST_F(MatchmakingTest, ClassStacking_Level1_AllRoles_NoDuplicateClassPerTeam)
+{
+    // H:Priest, H:Shaman, DPS:Warrior, DPS:Rogue, DPS:Warrior, DPS:Mage
+    // The two Warriors (class 1) must be split across teams.
+    auto selected = MakeCandidatesWithClass({
+        {PlayerRole::HEALER, 1500, 5},  // Priest
+        {PlayerRole::HEALER, 1500, 7},  // Shaman
+        {PlayerRole::DPS,    1500, 1},  // Warrior A
+        {PlayerRole::DPS,    1500, 4},  // Rogue
+        {PlayerRole::DPS,    1500, 1},  // Warrior B
+        {PlayerRole::DPS,    1500, 8},  // Mage
+    });
+
+    auto result = composer.FindBestTeamSplit(selected, TEAM_SIZE, true, false, 1, 0);
+
+    ASSERT_TRUE(result.valid);
+    EXPECT_FALSE(TeamHasDuplicateClass(result.team1Indices, selected))
+        << "Team 1 must not contain two players of the same class";
+    EXPECT_FALSE(TeamHasDuplicateClass(result.team2Indices, selected))
+        << "Team 2 must not contain two players of the same class";
+}
+
+/// Test 20: When every possible split would place two same-class players
+/// together (no valid split exists), FindBestTeamSplit must return !valid.
+TEST_F(MatchmakingTest, ClassStacking_Level1_NoValidSplit_ReturnsInvalid)
+{
+    // 2 healers of the same class + 4 DPS of the same class:
+    // any valid 1H+2DPS split forces both teams to have the same class.
+    auto selected = MakeCandidatesWithClass({
+        {PlayerRole::HEALER, 1500, 5},  // Priest
+        {PlayerRole::HEALER, 1500, 5},  // Priest (duplicate)
+        {PlayerRole::DPS,    1500, 1},  // Warrior
+        {PlayerRole::DPS,    1500, 1},  // Warrior (duplicate)
+        {PlayerRole::DPS,    1500, 1},  // Warrior (duplicate)
+        {PlayerRole::DPS,    1500, 1},  // Warrior (duplicate)
+    });
+
+    auto result = composer.FindBestTeamSplit(selected, TEAM_SIZE, true, false, 1, 0);
+
+    EXPECT_FALSE(result.valid)
+        << "No valid split exists when all DPS share the same class and both healers share a class";
+}
+
+/// Test 21: ClassIdToMaskBit helper returns the correct bitmask for each class.
+TEST_F(MatchmakingTest, ClassStacking_ClassIdToMaskBit_CorrectValues)
+{
+    EXPECT_EQ(MatchmakingComposer::ClassIdToMaskBit(1),  1u);     // Warrior
+    EXPECT_EQ(MatchmakingComposer::ClassIdToMaskBit(2),  2u);     // Paladin
+    EXPECT_EQ(MatchmakingComposer::ClassIdToMaskBit(3),  4u);     // Hunter
+    EXPECT_EQ(MatchmakingComposer::ClassIdToMaskBit(4),  8u);     // Rogue
+    EXPECT_EQ(MatchmakingComposer::ClassIdToMaskBit(5),  16u);    // Priest
+    EXPECT_EQ(MatchmakingComposer::ClassIdToMaskBit(6),  32u);    // Death Knight
+    EXPECT_EQ(MatchmakingComposer::ClassIdToMaskBit(7),  64u);    // Shaman
+    EXPECT_EQ(MatchmakingComposer::ClassIdToMaskBit(8),  128u);   // Mage
+    EXPECT_EQ(MatchmakingComposer::ClassIdToMaskBit(9),  256u);   // Warlock
+    EXPECT_EQ(MatchmakingComposer::ClassIdToMaskBit(11), 1024u);  // Druid
+    EXPECT_EQ(MatchmakingComposer::ClassIdToMaskBit(0),  0u);     // none
+    EXPECT_EQ(MatchmakingComposer::ClassIdToMaskBit(10), 0u);     // unused slot
+}
+
+/// Test 22: Class mask filtering — when the duplicate class is excluded from
+/// the mask, the stacking rule must not apply and the match must form.
+TEST_F(MatchmakingTest, ClassStacking_ClassMask_ExcludedClassIsIgnored)
+{
+    // Two Warriors as DPS. Warrior bitmask = 1.
+    // Setting classMask = 2 (Paladin only) must NOT block the Warriors.
+    auto selected = MakeCandidatesWithClass({
+        {PlayerRole::HEALER, 1500, 5},  // Priest
+        {PlayerRole::HEALER, 1500, 7},  // Shaman
+        {PlayerRole::DPS,    1500, 1},  // Warrior A
+        {PlayerRole::DPS,    1500, 1},  // Warrior B — same class as A
+        {PlayerRole::DPS,    1500, 8},  // Mage
+        {PlayerRole::DPS,    1500, 9},  // Warlock
+    });
+
+    // level 1, mask = Paladin only (2) — Warriors are NOT in the mask
+    auto result = composer.FindBestTeamSplit(selected, TEAM_SIZE, true, false, 1, 2);
+
+    ASSERT_TRUE(result.valid)
+        << "Warriors are excluded from the mask so duplicate Warriors must be allowed";
+}
+
+/// Test 23: Class mask filtering — when the duplicate class IS in the mask,
+/// the stacking rule must apply and prevent them from sharing a team.
+TEST_F(MatchmakingTest, ClassStacking_ClassMask_IncludedClassIsBlocked)
+{
+    // Two Warriors (class 1, mask bit 1). Set classMask = 1 to block Warriors.
+    auto selected = MakeCandidatesWithClass({
+        {PlayerRole::HEALER, 1500, 5},  // Priest
+        {PlayerRole::HEALER, 1500, 7},  // Shaman
+        {PlayerRole::DPS,    1500, 1},  // Warrior A
+        {PlayerRole::DPS,    1500, 1},  // Warrior B — duplicate
+        {PlayerRole::DPS,    1500, 8},  // Mage
+        {PlayerRole::DPS,    1500, 9},  // Warlock
+    });
+
+    auto result = composer.FindBestTeamSplit(selected, TEAM_SIZE, true, false, 1, 1);
+
+    ASSERT_TRUE(result.valid);
+    EXPECT_FALSE(TeamHasDuplicateClass(result.team1Indices, selected))
+        << "Warriors (in mask) must not both land on team 1";
+    EXPECT_FALSE(TeamHasDuplicateClass(result.team2Indices, selected))
+        << "Warriors (in mask) must not both land on team 2";
+}
+
+/// Test 24: Level 4 (any DPS) — two same-class DPS must be split.
+/// Healer duplicates are ignored by this level.
+TEST_F(MatchmakingTest, ClassStacking_Level4_DPSOnly_HealerDuplicateAllowed)
+{
+    // Healers: two Priests (class 5) — level 4 must NOT block them.
+    // DPS: two Rogues (class 4) — level 4 MUST split them.
+    auto selected = MakeCandidatesWithClass({
+        {PlayerRole::HEALER, 1500, 5},  // Priest A
+        {PlayerRole::HEALER, 1500, 5},  // Priest B (duplicate healer class)
+        {PlayerRole::DPS,    1500, 4},  // Rogue A
+        {PlayerRole::DPS,    1500, 4},  // Rogue B (duplicate DPS class)
+        {PlayerRole::DPS,    1500, 8},  // Mage
+        {PlayerRole::DPS,    1500, 9},  // Warlock
+    });
+
+    auto result = composer.FindBestTeamSplit(selected, TEAM_SIZE, true, false, 4, 0);
+
+    ASSERT_TRUE(result.valid) << "Level 4 must still allow duplicate healers";
+
+    // Rogue A and Rogue B must be on opposite teams
+    bool rogueAOnTeam1 = std::find(result.team1Indices.begin(), result.team1Indices.end(), 2u) != result.team1Indices.end();
+    bool rogueBOnTeam1 = std::find(result.team1Indices.begin(), result.team1Indices.end(), 3u) != result.team1Indices.end();
+    EXPECT_NE(rogueAOnTeam1, rogueBOnTeam1) << "The two Rogues must be on different teams (level 4)";
+}
+
+/// Test 25: Levels 5 & 6 — healer and DPS of the same class must not share a team.
+/// Example: Resto Druid (healer) + Balance Druid (DPS) on the same team is blocked.
+TEST_F(MatchmakingTest, ClassStacking_Level6_HealerDPSSameClass_BlockedTogether)
+{
+    // Healer: Druid (class 11). DPS: Druid (class 11) + 3 others.
+    // Level 6 must prevent Druid healer + Druid DPS on the same team.
+    auto selected = MakeCandidatesWithClass({
+        {PlayerRole::HEALER, 1500, 11}, // Resto Druid
+        {PlayerRole::HEALER, 1500, 5},  // Disc Priest
+        {PlayerRole::DPS,    1500, 11}, // Balance Druid (same class as healer)
+        {PlayerRole::DPS,    1500, 8},  // Mage
+        {PlayerRole::DPS,    1500, 1},  // Warrior
+        {PlayerRole::DPS,    1500, 9},  // Warlock
+    });
+
+    auto result = composer.FindBestTeamSplit(selected, TEAM_SIZE, true, false, 6, 0);
+
+    ASSERT_TRUE(result.valid);
+
+    // The Druid healer (index 0) and Druid DPS (index 2) must be on different teams
+    bool druidHealerOnTeam1 = std::find(result.team1Indices.begin(), result.team1Indices.end(), 0u) != result.team1Indices.end();
+    bool druidDPSOnTeam1    = std::find(result.team1Indices.begin(), result.team1Indices.end(), 2u) != result.team1Indices.end();
+    EXPECT_NE(druidHealerOnTeam1, druidDPSOnTeam1)
+        << "Resto Druid and Balance Druid must not share a team (level 6)";
 }

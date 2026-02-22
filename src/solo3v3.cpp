@@ -220,6 +220,57 @@ int Solo3v3::CountIgnorePairs(std::vector<uint32> const& indices, std::vector<Ca
     return pairs;
 }
 
+uint32 Solo3v3::ClassIdToMaskBit(uint8 classId)
+{
+    if (classId >= 1 && classId <= 9)
+        return 1u << (classId - 1);
+    if (classId == 11) // CLASS_DRUID — skip the unused slot 10
+        return 1u << 10;
+    return 0;
+}
+
+bool Solo3v3::HasClassStackingConflict(
+    std::vector<uint32> const& indices,
+    std::vector<Candidate> const& selected,
+    uint8 preventLevel,
+    uint32 classMask) const
+{
+    for (uint32 i = 0; i < indices.size(); ++i)
+    {
+        for (uint32 j = i + 1; j < indices.size(); ++j)
+        {
+            Candidate const& a = selected[indices[i]];
+            Candidate const& b = selected[indices[j]];
+
+            if (a.classId != b.classId)
+                continue;
+
+            // Apply optional class filter; 0 means all classes are checked
+            if (classMask != 0 && !(classMask & ClassIdToMaskBit(a.classId)))
+                continue;
+
+            bool aIsMelee  = (a.role == MELEE);
+            bool aIsRange  = (a.role == RANGE);
+            bool aIsHealer = (a.role == HEALER);
+            bool bIsMelee  = (b.role == MELEE);
+            bool bIsRange  = (b.role == RANGE);
+            bool bIsHealer = (b.role == HEALER);
+
+            switch (preventLevel)
+            {
+                case 1: return true;                                                                               // all roles
+                case 2: if (aIsMelee  && bIsMelee)                              return true; break;               // melee only
+                case 3: if (aIsRange  && bIsRange)                              return true; break;               // ranged only
+                case 4: if ((aIsMelee || aIsRange)  && (bIsMelee || bIsRange))  return true; break;               // any DPS
+                case 5: if ((aIsMelee || aIsHealer) && (bIsMelee || bIsHealer)) return true; break;               // melee + healer
+                case 6: if ((aIsRange  || aIsHealer) && (bIsRange  || bIsHealer)) return true; break;             // ranged + healer
+                default: break;
+            }
+        }
+    }
+    return false;
+}
+
 void Solo3v3::EnumerateCombinations(
     uint32 start,
     uint32 depth,
@@ -230,6 +281,8 @@ void Solo3v3::EnumerateCombinations(
     bool filterTalents,
     bool allDpsMatch,
     bool avoidIgnore,
+    uint8 preventClassStacking,
+    uint32 classStackMask,
     std::vector<uint32>& bestTeam1,
     bool& haveBest,
     uint64& bestDiff,
@@ -257,6 +310,15 @@ void Solo3v3::EnumerateCombinations(
             if (!allDpsMatch && (h1 != 1 || h2 != 1)) return;
         }
 
+        // Class stacking constraint: reject splits that place same-class players
+        // on the same team when the configured level applies to their roles.
+        if (preventClassStacking > 0)
+        {
+            if (HasClassStackingConflict(combo, selected, preventClassStacking, classStackMask) ||
+                HasClassStackingConflict(team2, selected, preventClassStacking, classStackMask))
+                return;
+        }
+
         // MMR balance score
         int64 sum1 = 0, sum2 = 0;
         for (uint32 i : combo) sum1 += selected[i].mmr;
@@ -279,7 +341,7 @@ void Solo3v3::EnumerateCombinations(
     for (uint32 i = start; i <= n - (teamSize - depth); ++i)
     {
         combo[depth] = i;
-        EnumerateCombinations(i + 1, depth + 1, combo, selected, teamSize, n, filterTalents, allDpsMatch, avoidIgnore, bestTeam1, haveBest, bestDiff, bestIgnores);
+        EnumerateCombinations(i + 1, depth + 1, combo, selected, teamSize, n, filterTalents, allDpsMatch, avoidIgnore, preventClassStacking, classStackMask, bestTeam1, haveBest, bestDiff, bestIgnores);
     }
 }
 
@@ -326,10 +388,12 @@ bool Solo3v3::CheckSolo3v3Arena(BattlegroundQueue* queue, BattlegroundBracketId 
     queue->m_SelectionPools[TEAM_ALLIANCE].Init();
     queue->m_SelectionPools[TEAM_HORDE].Init();
 
-    uint32 const MinPlayers      = sBattlegroundMgr->isArenaTesting() ? 1 : 3;
-    bool   const filterTalents   = sConfigMgr->GetOption<bool>("Solo.3v3.FilterTalents", false);
-    bool   const avoidIgnore     = sConfigMgr->GetOption<bool>("Solo.3v3.AvoidSameTeamIgnore", true);
-    uint32 const allDpsTimerMs   = sConfigMgr->GetOption<uint32>("Solo.3v3.FilterTalents.AllDPSTimer", 60) * 1000;
+    uint32 const MinPlayers             = sBattlegroundMgr->isArenaTesting() ? 1 : 3;
+    bool   const filterTalents          = sConfigMgr->GetOption<bool>("Solo.3v3.FilterTalents", false);
+    bool   const avoidIgnore            = sConfigMgr->GetOption<bool>("Solo.3v3.AvoidSameTeamIgnore", true);
+    uint32 const allDpsTimerMs          = sConfigMgr->GetOption<uint32>("Solo.3v3.FilterTalents.AllDPSTimer", 60) * 1000;
+    uint8  const preventClassStacking   = sConfigMgr->GetOption<uint8>("Solo.3v3.PreventClassStacking", 0);
+    uint32 const classStackMask         = sConfigMgr->GetOption<uint32>("Solo.3v3.PreventClassStacking.Classes", 0);
 
     uint8 const allianceGroupType = isRated ? BG_QUEUE_PREMADE_ALLIANCE : BG_QUEUE_NORMAL_ALLIANCE;
     uint8 const hordeGroupType    = isRated ? BG_QUEUE_PREMADE_HORDE    : BG_QUEUE_NORMAL_HORDE;
@@ -353,7 +417,7 @@ bool Solo3v3::CheckSolo3v3Arena(BattlegroundQueue* queue, BattlegroundBracketId 
                     continue;
 
                 Solo3v3TalentCat role = filterTalents ? GetTalentCatForSolo3v3(plr) : MELEE;
-                allCandidates.push_back({g, plr, role, GetMMR(plr, g)});
+                allCandidates.push_back({g, plr, role, GetMMR(plr, g), static_cast<uint8>(plr->getClass())});
                 break; // solo queue: exactly one player per group
             }
         }
@@ -424,7 +488,7 @@ bool Solo3v3::CheckSolo3v3Arena(BattlegroundQueue* queue, BattlegroundBracketId 
     int      bestIgnores = 0;
 
     std::vector<uint32> combo(teamSize);
-    EnumerateCombinations(0, 0, combo, selected, teamSize, n, filterTalents, allDpsMatch, avoidIgnore, bestTeam1, haveBest, bestDiff, bestIgnores);
+    EnumerateCombinations(0, 0, combo, selected, teamSize, n, filterTalents, allDpsMatch, avoidIgnore, preventClassStacking, classStackMask, bestTeam1, haveBest, bestDiff, bestIgnores);
 
     if (!haveBest)
         return false;

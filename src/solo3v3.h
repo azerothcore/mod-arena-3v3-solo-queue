@@ -140,6 +140,43 @@ public:
     void SaveIncompleteMatchLogs(Battleground* bg);
 
 private:
+    struct Candidate
+    {
+        GroupQueueInfo*  group;
+        Player*          player;
+        Solo3v3TalentCat role;
+        uint32           mmr;
+    };
+
+    uint32 GetMMR(Player* player, GroupQueueInfo* ginfo);
+
+    int CountIgnorePairs(std::vector<uint32> const& indices, std::vector<Candidate> const& selected, bool avoidIgnore);
+
+    void EnumerateCombinations(
+        uint32 start,
+        uint32 depth,
+        std::vector<uint32>& combo,
+        std::vector<Candidate> const& selected,
+        uint32 teamSize,
+        uint32 n,
+        bool filterTalents,
+        bool allDpsMatch,
+        bool avoidIgnore,
+        std::vector<uint32>& bestTeam1,
+        bool& haveBest,
+        uint64& bestDiff,
+        int& bestIgnores);
+
+    void AssignToPool(
+        std::vector<uint32> const& indices,
+        std::vector<Candidate> const& selected,
+        uint32 poolTeam,
+        BattlegroundQueue* queue,
+        BattlegroundBracketId bracket_id,
+        uint8 allianceGroupType,
+        uint8 hordeGroupType,
+        uint32 MinPlayers);
+
     std::unordered_set<uint32> arenasWithDeserter;
 };
 

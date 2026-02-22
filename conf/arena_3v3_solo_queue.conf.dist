@@ -17,13 +17,31 @@ Solo.3v3.Enable = 1
 #       Default: 1
 #       Value:   1 - (true)
 #                0 - (false)
-
+#
 Solo.3v3.EnableCommand = 1
 
 Solo.3v3.EnableTestingCommand = 1
 
 
-Solo.3v3.FilterTalents = 0
+#   Solo.3v3.FilterTalents
+#       Description: When enabled, the matchmaker will attempt to create more balanced teams by considering players' talent specializations.
+#                    It will try to avoid placing too many players of the same role (DPS, healer, tank) on the same team, which can lead
+#                    to more balanced and competitive matches. When disabled, the matchmaker will not consider talent specializations and may create unbalanced teams
+#       Default: 1 - (true)
+#                0 - (false)
+#
+Solo.3v3.FilterTalents = 1
+
+#
+#    Solo.3v3.FilterTalents.AllDPSTimer
+#        Description: When Solo.3v3.FilterTalents is enabled, this timer (in seconds) allows players
+#                     to wait for a certain time in the queue before being allowed to fill a 3rd DPS
+#                     slot on a team that has no healer yet (all-DPS team). This prevents players from
+#                     immediately filling a 3rd DPS slot and starting unbalanced matches like 3 DPS vs 2 DPS + 1 healer,
+#                     while still allowing all-DPS teams to form after waiting for the specified time.
+#        Value:     60 - (60 seconds)
+#
+Solo.3v3.FilterTalents.AllDPSTimer = 60
 
 #
 #    Solo.3v3.AvoidSameTeamIgnore

@@ -141,11 +141,25 @@ private:
         Player*          player;
         Solo3v3TalentCat role;
         uint32           mmr;
+        uint8            classId; //< player->GetClass() cached at queue time
     };
 
     uint32 GetMMR(Player* player, GroupQueueInfo* ginfo);
 
     int CountIgnorePairs(std::vector<uint32> const& indices, std::vector<Candidate> const& selected, bool avoidIgnore);
+
+    // Returns true when the team at @p indices contains two players of the
+    // same class that violate the configured stacking level and class mask.
+    bool HasClassStackingConflict(
+        std::vector<uint32> const& indices,
+        std::vector<Candidate> const& selected,
+        uint8 preventLevel,
+        uint32 classMask) const;
+
+    // Converts a WoW class ID (1–11) to its bit position for the
+    // Solo.3v3.PreventClassStacking.Classes bitmask.
+    // Mirrors 1<<(classId-1) for classes 1-9; Druid (11) maps to bit 10.
+    static uint32 ClassIdToMaskBit(uint8 classId);
 
     void EnumerateCombinations(
         uint32 start,
@@ -157,6 +171,8 @@ private:
         bool filterTalents,
         bool allDpsMatch,
         bool avoidIgnore,
+        uint8 preventClassStacking,
+        uint32 classStackMask,
         std::vector<uint32>& bestTeam1,
         bool& haveBest,
         uint64& bestDiff,

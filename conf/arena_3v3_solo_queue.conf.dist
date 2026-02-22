@@ -53,6 +53,40 @@ Solo.3v3.FilterTalents.AllDPSTimer = 60
 
 Solo.3v3.AvoidSameTeamIgnore = 0
 
+#
+#    Solo.3v3.PreventClassStacking
+#        Description: Prevents two players of the same class from being placed on
+#                     the same team. The value controls which role combinations
+#                     are subject to the restriction.
+#        Default:     0 - Disabled
+#                     1 - Block duplicates across all roles (melee, ranged, healer)
+#                     2 - Block only among melee players
+#                     3 - Block only among ranged players
+#                     4 - Block among any DPS (melee or ranged)
+#                     5 - Block between melee and healer roles
+#                     6 - Block between ranged and healer roles
+
+Solo.3v3.PreventClassStacking = 0
+
+#
+#    Solo.3v3.PreventClassStacking.Classes
+#        Description: Bitmask of classes affected by Solo.3v3.PreventClassStacking.
+#                     Set to 0 to apply the restriction to all classes.
+#                     Add the values of the classes you want to restrict:
+#                       1    - Warrior
+#                       2    - Paladin
+#                       4    - Hunter
+#                       8    - Rogue
+#                       16   - Priest
+#                       32   - Death Knight
+#                       64   - Shaman
+#                       128  - Mage
+#                       256  - Warlock
+#                       1024 - Druid
+#        Default:       0 - All classes
+
+Solo.3v3.PreventClassStacking.Classes = 0
+
 Arena.CheckEquipAndTalents = 0
 Arena.3v3.BlockForbiddenTalents = 0
 Solo.3v3.CastDeserterOnAfk = 1

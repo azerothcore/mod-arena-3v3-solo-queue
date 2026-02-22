@@ -139,7 +139,6 @@ bool NpcSolo3v3::OnGossipSelect(Player* player, Creature* creature, uint32 /*sen
             return true;
         }
 
-
         case NPC_3v3_ACTION_JOIN_QUEUE_ARENA_UNRATED:
         {
             // check Deserter debuff

@@ -176,7 +176,6 @@ public:
         ALLSPELLHOOK_CAN_SELECT_SPEC_TALENT
     }) { }
 
-
     bool CanSelectSpecTalent(Spell* spell) override
     {
         if (!spell)

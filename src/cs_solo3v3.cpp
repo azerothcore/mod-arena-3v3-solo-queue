@@ -230,7 +230,6 @@ public:
     }
 };
 
-
 void AddSC_Solo_3v3_commandscript()
 {
     new CommandJoinSolo();

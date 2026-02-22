@@ -193,7 +193,7 @@ uint32 Solo3v3::GetMMR(Player* player, GroupQueueInfo* ginfo)
 
     ArenaTeam* at = sArenaTeamMgr->GetArenaTeamById(player->GetArenaTeamId(ARENA_SLOT_SOLO_3v3));
     if (!at)
-        return 1500;
+        return sConfigMgr->GetOption<uint32>("Arena.ArenaStartPersonalRating", 0);
 
     for (auto const& m : at->GetMembers())
         if (m.Guid == player->GetGUID())
@@ -438,27 +438,6 @@ bool Solo3v3::CheckSolo3v3Arena(BattlegroundQueue* queue, BattlegroundBracketId 
             if (ci < static_cast<uint32>(bestTeam1.size()) && bestTeam1[ci] == i) { ++ci; continue; }
             team2Indices.push_back(i);
         }
-    }
-
-    // Log team compositions
-    {
-        std::string team1Info = "Team 1 (Alliance): ";
-        uint32 team1TotalMMR = 0;
-        for (uint32 idx : bestTeam1)
-        {
-            team1Info += selected[idx].player->GetName() + " (MMR: " + std::to_string(selected[idx].mmr) + "), ";
-            team1TotalMMR += selected[idx].mmr;
-        }
-        LOG_ERROR("solo3v3", "{} Total MMR: {}", team1Info, team1TotalMMR);
-
-        std::string team2Info = "Team 2 (Horde): ";
-        uint32 team2TotalMMR = 0;
-        for (uint32 idx : team2Indices)
-        {
-            team2Info += selected[idx].player->GetName() + " (MMR: " + std::to_string(selected[idx].mmr) + "), ";
-            team2TotalMMR += selected[idx].mmr;
-        }
-        LOG_ERROR("solo3v3", "{} Total MMR: {}", team2Info, team2TotalMMR);
     }
 
     // === Phase 4: assign to selection pools, reclassifying faction bucket if needed ===

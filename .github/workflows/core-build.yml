@@ -1,91 +1,91 @@
 name: core-build
 on:
-  push:
-    branches:
-      - 'master'
-      - 'main'
-  pull_request:
-    branches:
-      - 'master'
-      - 'main'
-  workflow_dispatch:
+    push:
+        branches:
+            - "master"
+            - "main"
+    pull_request:
+        branches:
+            - "master"
+            - "main"
+    workflow_dispatch:
 
 jobs:
-  build:
-    runs-on: ubuntu-22.04
-    strategy:
-      fail-fast: false
-      matrix:
-        compiler: [clang]
+    build:
+        runs-on: ubuntu-24.04
+        strategy:
+            fail-fast: false
+            matrix:
+                compiler: [clang]
 
-    steps:
-      - name: Checkout AzerothCore
-        uses: actions/checkout@v3
-        with:
-          repository: azerothcore/azerothcore-wotlk
-          ref: master
-          path: azerothcore
+        steps:
+            - name: Checkout AzerothCore
+              uses: actions/checkout@v3
+              with:
+                  repository: azerothcore/azerothcore-wotlk
+                  ref: master
+                  path: azerothcore
 
-      - name: Checkout module
-        uses: actions/checkout@v3
-        with:
-          path: azerothcore/modules/mod-arena-3v3-solo-queue
+            - name: Checkout module
+              uses: actions/checkout@v3
+              with:
+                  path: azerothcore/modules/mod-arena-3v3-solo-queue
 
-      - name: Install dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y \
-            clang \
-            cmake \
-            build-essential \
-            libmysqlclient-dev \
-            libssl-dev \
-            libbz2-dev \
-            libreadline-dev \
-            libncurses-dev \
-            mysql-server \
-            libboost-all-dev
+            - name: Install dependencies
+              run: |
+                  sudo apt-get update
+                  sudo apt-get install -y \
+                    clang \
+                    cmake \
+                    build-essential \
+                    libmysqlclient-dev \
+                    libssl-dev \
+                    libbz2-dev \
+                    libreadline-dev \
+                    libncurses-dev \
+                    mysql-server \
+                    libboost-all-dev
 
-      - name: Configure
-        working-directory: azerothcore
-        run: |
-          mkdir -p build
-          cd build
-          cmake ../ \
-            -DCMAKE_INSTALL_PREFIX=$HOME/azerothcore-install \
-            -DCMAKE_C_COMPILER=/usr/bin/clang \
-            -DCMAKE_CXX_COMPILER=/usr/bin/clang++ \
-            -DWITH_WARNINGS=1 \
-            -DTOOLS_BUILD=none \
-            -DSCRIPTS=static \
-            -DMODULES=static \
-            -DBUILD_TESTING=ON
+            - name: Configure
+              working-directory: azerothcore
+              run: |
+                  mkdir -p build
+                  cd build
+                  cmake ../ \
+                    -DCMAKE_INSTALL_PREFIX=$HOME/azerothcore-install \
+                    -DCMAKE_C_COMPILER=/usr/bin/clang \
+                    -DCMAKE_CXX_COMPILER=/usr/bin/clang++ \
+                    -DWITH_WARNINGS=1 \
+                    -DTOOLS_BUILD=none \
+                    -DSCRIPTS=static \
+                    -DMODULES=static \
+                    -DBUILD_TESTING=ON
 
-      - name: Build
-        working-directory: azerothcore/build
-        run: make -j$(nproc)
+            - name: Build
+              working-directory: azerothcore/build
+              run: make -j$(nproc)
 
-      - name: Run all unit tests
-        working-directory: azerothcore
-        run: |
-          if [ -f "var/build/obj/src/test/unit_tests" ]; then
-            echo "Running all unit tests (includes module tests)..."
-            var/build/obj/src/test/unit_tests --gtest_filter="*" --gtest_color=yes
-          elif [ -f "build/src/test/unit_tests" ]; then
-            echo "Running all unit tests (includes module tests)..."
-            build/src/test/unit_tests --gtest_filter="*" --gtest_color=yes
-          else
-            echo "Unit tests binary not found"
-            exit 1
-          fi
+            - name: Run all unit tests
+              working-directory: azerothcore
+              run: |
+                  if [ -f "var/build/obj/src/test/unit_tests" ]; then
+                    echo "Running all unit tests (includes module tests)..."
+                    var/build/obj/src/test/unit_tests --gtest_filter="*" --gtest_color=yes
+                  elif [ -f "build/src/test/unit_tests" ]; then
+                    echo "Running all unit tests (includes module tests)..."
+                    build/src/test/unit_tests --gtest_filter="*" --gtest_color=yes
+                  else
+                    echo "Unit tests binary not found"
+                    exit 1
+                  fi
 
-      - name: Run module-specific matchmaking tests
-        working-directory: azerothcore
-        run: |
-          if [ -f "var/build/obj/src/test/unit_tests" ]; then
-            echo "Running mod-arena-3v3-solo-queue matchmaking tests..."
-            var/build/obj/src/test/unit_tests --gtest_filter="*Matchmaking*" --gtest_color=yes
-          elif [ -f "build/src/test/unit_tests" ]; then
-            echo "Running mod-arena-3v3-solo-queue matchmaking tests..."
-            build/src/test/unit_tests --gtest_filter="*Matchmaking*" --gtest_color=yes
-          fi
+            - name: Run module-specific matchmaking tests
+              working-directory: azerothcore
+              run: |
+                  if [ -f "var/build/obj/src/test/unit_tests" ]; then
+                    echo "Running mod-arena-3v3-solo-queue matchmaking tests..."
+                    var/build/obj/src/test/unit_tests --gtest_filter="*Matchmaking*" --gtest_color=yes
+                  elif [ -f "build/src/test/unit_tests" ]; then
+                    echo "Running mod-arena-3v3-solo-queue matchmaking tests..."
+                    build/src/test/unit_tests --gtest_filter="*Matchmaking*" --gtest_color=yes
+                  fi

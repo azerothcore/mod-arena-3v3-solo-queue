@@ -134,6 +134,11 @@ public:
     // Returns true if candidate has an ignore relationship with any player already in the given team's selection pool
     bool HasIgnoreConflict(Player* candidate, BattlegroundQueue* queue, uint32 teamId);
 
+    // Logs all arena participants to log_arena_fights / log_arena_memberstats for matches
+    // that end before completion (leaver during preparation or missing player at arena start).
+    // Must be called while bg->isRated() is still true, i.e. before SetRated(false).
+    void SaveIncompleteMatchLogs(Battleground* bg);
+
 private:
     struct Candidate
     {

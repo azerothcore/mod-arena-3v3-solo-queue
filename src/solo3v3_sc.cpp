@@ -733,6 +733,7 @@ void PlayerScript3v3Arena::OnPlayerBattlegroundDesertion(Player* player, const B
                     // end arena if a player leaves while in preparation
                     if (sConfigMgr->GetOption<bool>("Solo.3v3.StopGameIncomplete", true))
                     {
+                        sSolo->SaveIncompleteMatchLogs(bg);
                         bg->SetRated(false);
                         bg->EndBattleground(TEAM_NEUTRAL);
                     }

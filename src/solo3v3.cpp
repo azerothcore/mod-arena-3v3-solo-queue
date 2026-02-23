@@ -19,12 +19,14 @@
 #include "ArenaTeamMgr.h"
 #include "BattlegroundMgr.h"
 #include "Config.h"
+#include "DatabaseEnv.h"
 #include "GameTime.h"
 #include "Log.h"
 #include "ScriptMgr.h"
 #include "Chat.h"
 #include "DisableMgr.h"
 #include "SocialMgr.h"
+#include "WorldSessionMgr.h"
 #include <algorithm>
 #include <functional>
 
@@ -81,10 +83,9 @@ void Solo3v3::CountAsLoss(Player* player, bool isInProgress)
                 player->CastSpell(player, 26013, true);
         }
     }
-
-    // leave while arena is in preparation || don't accept queue || logout while invited
     else
     {
+        // leave while arena is in preparation || don't accept queue || logout while invited
         ratingLoss = sConfigMgr->GetOption<int32>("Solo.3v3.RatingPenalty.LeaveBeforeMatchStart", 50);
         player->CastSpell(player, 26013, true);
     }
@@ -153,6 +154,70 @@ void Solo3v3::CleanUp3v3SoloQ(Battleground* bg)
     }
 }
 
+void Solo3v3::SaveIncompleteMatchLogs(Battleground* bg)
+{
+    if (!bg || !bg->isRated() || bg->GetArenaType() != ARENA_TYPE_3v3_SOLO)
+        return;
+
+    if (bg->ArenaLogEntries.empty())
+        return;
+
+    uint32 startDelay = bg->GetStartDelayTime();
+    uint32 fightId = sArenaTeamMgr->GetNextArenaLogId();
+    uint32 currOnline = sWorldSessionMgr->GetActiveSessionCount();
+
+    // Mirror what Arena::EndBattleground does for the TEAM_NEUTRAL case: treat
+    // TEAM_HORDE as "winner" slot and TEAM_ALLIANCE as "loser" slot in the log
+    // row, with 0 rating changes, since neither team actually won.
+    uint32 winnerTeamId = bg->GetArenaTeamIdForTeam(TEAM_HORDE);
+    uint32 loserTeamId  = bg->GetArenaTeamIdForTeam(TEAM_ALLIANCE);
+
+    CharacterDatabaseTransaction trans = CharacterDatabase.BeginTransaction();
+    CharacterDatabasePreparedStatement* stmt = CharacterDatabase.GetPreparedStatement(CHAR_INS_ARENA_LOG_FIGHT);
+    stmt->SetData(0, fightId);
+    stmt->SetData(1, bg->GetArenaType());
+    stmt->SetData(2, ((bg->GetStartTime() <= startDelay ? 0 : bg->GetStartTime() - startDelay) / 1000));
+    stmt->SetData(3, winnerTeamId);
+    stmt->SetData(4, loserTeamId);
+    stmt->SetData(5, (uint16)0); // winner team rating (no change)
+    stmt->SetData(6, (uint16)0); // winner MMR (no change)
+    stmt->SetData(7, (int16)0);  // winner rating change
+    stmt->SetData(8, (uint16)0); // loser team rating (no change)
+    stmt->SetData(9, (uint16)0); // loser MMR (no change)
+    stmt->SetData(10, (int16)0); // loser rating change
+    stmt->SetData(11, currOnline);
+    trans->Append(stmt);
+
+    uint8 memberId = 0;
+    for (auto const& [playerGuid, arenaLogEntryData] : bg->ArenaLogEntries)
+    {
+        auto const& score = bg->GetPlayerScores()->find(playerGuid.GetCounter());
+        stmt = CharacterDatabase.GetPreparedStatement(CHAR_INS_ARENA_LOG_MEMBERSTATS);
+        stmt->SetData(0, fightId);
+        stmt->SetData(1, ++memberId);
+        stmt->SetData(2, arenaLogEntryData.Name);
+        stmt->SetData(3, arenaLogEntryData.Guid);
+        stmt->SetData(4, arenaLogEntryData.ArenaTeamId);
+        stmt->SetData(5, arenaLogEntryData.Acc);
+        stmt->SetData(6, arenaLogEntryData.IP);
+        if (score != bg->GetPlayerScores()->end())
+        {
+            stmt->SetData(7, score->second->GetDamageDone());
+            stmt->SetData(8, score->second->GetHealingDone());
+            stmt->SetData(9, score->second->GetKillingBlows());
+        }
+        else
+        {
+            stmt->SetData(7, 0);
+            stmt->SetData(8, 0);
+            stmt->SetData(9, 0);
+        }
+        trans->Append(stmt);
+    }
+
+    CharacterDatabase.CommitTransaction(trans);
+}
+
 void Solo3v3::CheckStartSolo3v3Arena(Battleground* bg)
 {
     bool someoneNotInArena = false;
@@ -181,6 +246,7 @@ void Solo3v3::CheckStartSolo3v3Arena(Battleground* bg)
     // if one player didn't enter arena and StopGameIncomplete is true, then end arena
     if (someoneNotInArena && sConfigMgr->GetOption<bool>("Solo.3v3.StopGameIncomplete", true))
     {
+        SaveIncompleteMatchLogs(bg);
         bg->SetRated(false);
         bg->EndBattleground(TEAM_NEUTRAL);
     }

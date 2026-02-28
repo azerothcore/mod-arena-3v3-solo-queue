@@ -458,6 +458,7 @@ bool Solo3v3::CheckSolo3v3Arena(BattlegroundQueue* queue, BattlegroundBracketId 
     bool   const filterTalents          = sConfigMgr->GetOption<bool>("Solo.3v3.FilterTalents", false);
     bool   const avoidIgnore            = sConfigMgr->GetOption<bool>("Solo.3v3.AvoidSameTeamIgnore", true);
     uint32 const allDpsTimerMs          = sConfigMgr->GetOption<uint32>("Solo.3v3.FilterTalents.AllDPSTimer", 60) * 1000;
+    uint32 const singleHealerDpsTimerMs = sConfigMgr->GetOption<uint32>("Solo.3v3.FilterTalents.SingleHealerDPSTimer", 60) * 1000;
     uint8  const preventClassStacking   = sConfigMgr->GetOption<uint8>("Solo.3v3.PreventClassStacking", 0);
     uint32 const classStackMask         = sConfigMgr->GetOption<uint32>("Solo.3v3.PreventClassStacking.Classes", 0);
 
@@ -535,7 +536,23 @@ bool Solo3v3::CheckSolo3v3Arena(BattlegroundQueue* queue, BattlegroundBracketId 
                 allDpsMatch = true;
             }
         }
-        // 1 healer present: unbalanced composition, cannot form a valid match — fall through.
+        else if (healers.size() == 1)
+        {
+            // Single-healer fallback: if enough DPS have waited long enough, start an
+            // all-DPS match with those DPS. The lone healer stays in queue waiting for
+            // a second healer. A match with only 1 healer + 5 DPS is never formed.
+            std::vector<Candidate> timedDps;
+            for (auto& c : dps)
+                if (c.group->JoinTime + singleHealerDpsTimerMs <= now)
+                    timedDps.push_back(c);
+
+            if (timedDps.size() >= MinPlayers * 2)
+            {
+                for (uint32 i = 0; i < MinPlayers * 2; ++i)
+                    selected.push_back(timedDps[i]);
+                allDpsMatch = true;
+            }
+        }
     }
 
     if (selected.size() < MinPlayers * 2)

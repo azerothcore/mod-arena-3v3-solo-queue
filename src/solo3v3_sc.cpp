@@ -804,7 +804,7 @@ void PlayerScript3v3Arena::OnPlayerGetArenaPersonalRating(Player* player, uint8 
 {
     if (slot == ARENA_SLOT_SOLO_3v3)
     {
-        if (ArenaTeam* at = sArenaTeamMgr->GetArenaTeamByCaptain(player->GetGUID(), ARENA_TYPE_3v3_SOLO))
+        if (ArenaTeam* at = sArenaTeamMgr->GetArenaTeamById(player->GetArenaTeamId(ARENA_SLOT_SOLO_3v3)))
         {
             rating = at->GetRating();
         }
@@ -820,7 +820,7 @@ void PlayerScript3v3Arena::OnPlayerGetMaxPersonalArenaRatingRequirement(const Pl
 
     if (minslot < 6)
     {
-        if (ArenaTeam* at = sArenaTeamMgr->GetArenaTeamByCaptain(player->GetGUID(), ARENA_TYPE_3v3_SOLO))
+        if (ArenaTeam* at = sArenaTeamMgr->GetArenaTeamById(player->GetArenaTeamId(ARENA_SLOT_SOLO_3v3)))
         {
             maxArenaRating = std::max(at->GetRating(), maxArenaRating);
         }

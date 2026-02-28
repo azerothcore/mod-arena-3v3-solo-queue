@@ -18,13 +18,6 @@
 #include "solo3v3_sc.h"
 #include <unordered_map>
 
-struct ArenaTeamsRating {
-    uint32 allianceRating;
-    uint32 hordeRating;
-    uint8 playersCount = 0;
-};
-std::unordered_map<uint32, ArenaTeamsRating> bgArenaTeamsRating;
-
 void NpcSolo3v3::Initialize()
 {
     for (int i = 0; i < MAX_TALENT_CAT; i++)
@@ -292,6 +285,10 @@ bool NpcSolo3v3::JoinQueueArena(Player* player, Creature* /*creature*/, bool isR
         player->InBattlegroundQueueForBattlegroundQueueType((BattlegroundQueueTypeId)BATTLEGROUND_QUEUE_1v1))
         return false;
 
+    // Block re-queuing while a rated solo arena match the player was part of is still ongoing
+    if (sSolo->IsPlayerInActiveArena(player->GetGUID()))
+        return false;
+
     //check existance
     Battleground* bg = sBattlegroundMgr->GetBattlegroundTemplate(BATTLEGROUND_AA);
 
@@ -524,7 +521,7 @@ void Solo3v3BG::OnQueueUpdate(BattlegroundQueue* queue, uint32 /*diff*/, Battleg
             arenaTeamsRating.allianceRating = arenaTeams[TEAM_ALLIANCE]->GetStats().Rating;
             arenaTeamsRating.hordeRating = arenaTeams[TEAM_HORDE]->GetStats().Rating;
 
-            bgArenaTeamsRating[arena->GetInstanceID()] = arenaTeamsRating;
+            sSolo->bgArenaTeamsRating[arena->GetInstanceID()] = arenaTeamsRating;
         }
 
         // Set matchmaker rating for calculating rating-modifier on EndBattleground (when a team has won/lost)
@@ -562,7 +559,7 @@ void Solo3v3BG::OnBattlegroundEndReward(Battleground* bg, Player* player, TeamId
 
         ArenaTeamStats atStats = plrArenaTeam->GetStats();
 
-        bgArenaTeamsRating[bg->GetInstanceID()].playersCount += 1;
+        sSolo->bgArenaTeamsRating[bg->GetInstanceID()].playersCount += 1;
 
         atStats.SeasonGames += 1;
         atStats.WeekGames += 1;
@@ -584,8 +581,11 @@ void Solo3v3BG::OnBattlegroundEndReward(Battleground* bg, Player* player, TeamId
             plrArenaTeam->NotifyStatsChanged();
             plrArenaTeam->SaveToDB(true);
 
-            if (bgArenaTeamsRating[bg->GetInstanceID()].playersCount == bg->GetPlayersSize())
-                bgArenaTeamsRating.erase(bg->GetInstanceID());
+            if (sSolo->bgArenaTeamsRating[bg->GetInstanceID()].playersCount == bg->GetPlayersSize())
+            {
+                sSolo->ProcessAbsentParticipants(bg, TEAM_NEUTRAL);
+                sSolo->bgArenaTeamsRating.erase(bg->GetInstanceID());
+            }
 
             return;
         }
@@ -593,8 +593,8 @@ void Solo3v3BG::OnBattlegroundEndReward(Battleground* bg, Player* player, TeamId
         int32 ratingModifier;
         int32 oldTeamRating;
 
-        uint32 oldTeamRatingAlliance = bgArenaTeamsRating[bg->GetInstanceID()].allianceRating;
-        uint32 oldTeamRatingHorde = bgArenaTeamsRating[bg->GetInstanceID()].hordeRating;
+        uint32 oldTeamRatingAlliance = sSolo->bgArenaTeamsRating[bg->GetInstanceID()].allianceRating;
+        uint32 oldTeamRatingHorde = sSolo->bgArenaTeamsRating[bg->GetInstanceID()].hordeRating;
 
         TeamId bgTeamId = player->GetBgTeamId();
         const bool isPlayerWinning = bgTeamId == winnerTeamId;
@@ -653,9 +653,12 @@ void Solo3v3BG::OnBattlegroundEndReward(Battleground* bg, Player* player, TeamId
         plrArenaTeam->NotifyStatsChanged();
         plrArenaTeam->SaveToDB(true);
 
-        // if all the players rating have been processed, delete the stored bg rating informations
-        if (bgArenaTeamsRating[bg->GetInstanceID()].playersCount == bg->GetPlayersSize())
-            bgArenaTeamsRating.erase(bg->GetInstanceID());
+        // if all the players rating have been processed, apply rating to absent participants then clean up
+        if (sSolo->bgArenaTeamsRating[bg->GetInstanceID()].playersCount == bg->GetPlayersSize())
+        {
+            sSolo->ProcessAbsentParticipants(bg, winnerTeamId);
+            sSolo->bgArenaTeamsRating.erase(bg->GetInstanceID());
+        }
     }
 }
 

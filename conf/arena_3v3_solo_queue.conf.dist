@@ -65,6 +65,17 @@ Solo.3v3.MinItemQuality = 0
 Solo.3v3.FilterTalents.AllDPSTimer = 60
 
 #
+#    Solo.3v3.FilterTalents.SingleHealerDPSTimer
+#        Description: When Solo.3v3.FilterTalents is enabled and exactly one healer is in queue
+#                     with no second healer available, this timer (in seconds) allows DPS players
+#                     to form an all-DPS match after waiting long enough. The lone healer remains
+#                     in queue waiting for a second healer. A match with only 1 healer and 5 DPS
+#                     is never started.
+#        Value:     60 - (60 seconds)
+#
+Solo.3v3.FilterTalents.SingleHealerDPSTimer = 60
+
+#
 #    Solo.3v3.AvoidSameTeamIgnore
 #        Description: When enabled, the matchmaker avoids placing players who have each other
 #                     on their ignore list on the same team. Falls back to placing them together

@@ -111,14 +111,15 @@ protected:
     TeamSplitResult RunFullPipeline(
         std::vector<QueuedCandidate> const& candidates,
         bool                                filterTalents,
-        uint32_t                            allDpsTimer = ALL_DPS_TIMER,
-        uint32_t                            now         = 100000) const
+        uint32_t                            allDpsTimer          = ALL_DPS_TIMER,
+        uint32_t                            singleHealerDpsTimer = ALL_DPS_TIMER,
+        uint32_t                            now                  = 100000) const
     {
         std::vector<QueuedCandidate> selected;
         bool allDpsMatch = false;
 
         if (!composer.SelectCandidates(candidates, TEAM_SIZE, filterTalents,
-                                       allDpsTimer, now, selected, allDpsMatch))
+                                       allDpsTimer, singleHealerDpsTimer, now, selected, allDpsMatch))
             return {};
 
         return composer.FindBestTeamSplit(selected, TEAM_SIZE, filterTalents, allDpsMatch);
@@ -140,7 +141,7 @@ TEST_F(MatchmakingTest, SelectCandidates_TwoHealersFourDPS_SelectsSixPlayers)
     std::vector<QueuedCandidate> selected;
     bool allDpsMatch = false;
     bool ok = composer.SelectCandidates(candidates, TEAM_SIZE, true,
-                                        ALL_DPS_TIMER, 100000, selected, allDpsMatch);
+                                        ALL_DPS_TIMER, ALL_DPS_TIMER, 100000, selected, allDpsMatch);
 
     EXPECT_TRUE(ok);
     EXPECT_EQ(selected.size(), 6u);
@@ -164,7 +165,7 @@ TEST_F(MatchmakingTest, SelectCandidates_InsufficientPlayers_ReturnsFalse)
     std::vector<QueuedCandidate> selected;
     bool allDpsMatch = false;
     bool ok = composer.SelectCandidates(candidates, TEAM_SIZE, true,
-                                        ALL_DPS_TIMER, 100000, selected, allDpsMatch);
+                                        ALL_DPS_TIMER, ALL_DPS_TIMER, 100000, selected, allDpsMatch);
 
     EXPECT_FALSE(ok) << "Must fail when fewer than 6 players are queued";
 }
@@ -183,7 +184,7 @@ TEST_F(MatchmakingTest, SelectCandidates_ExactlyOneHealer_UnbalancedComposition_
     std::vector<QueuedCandidate> selected;
     bool allDpsMatch = false;
     bool ok = composer.SelectCandidates(candidates, TEAM_SIZE, true,
-                                        ALL_DPS_TIMER, 100000, selected, allDpsMatch);
+                                        ALL_DPS_TIMER, ALL_DPS_TIMER, 100000, selected, allDpsMatch);
 
     EXPECT_FALSE(ok) << "1 healer cannot be distributed fairly between two teams";
 }
@@ -205,7 +206,7 @@ TEST_F(MatchmakingTest, SelectCandidates_AllDPS_FallbackAfterTimer_Succeeds)
     std::vector<QueuedCandidate> selected;
     bool allDpsMatch = false;
     bool ok = composer.SelectCandidates(candidates, TEAM_SIZE, true,
-                                        timer, now, selected, allDpsMatch);
+                                        timer, timer, now, selected, allDpsMatch);
 
     EXPECT_TRUE(ok)         << "All-DPS match must be allowed after timer expires";
     EXPECT_TRUE(allDpsMatch) << "allDpsMatch flag must be set for an all-DPS match";
@@ -229,7 +230,7 @@ TEST_F(MatchmakingTest, SelectCandidates_AllDPS_BlockedBeforeTimer)
     std::vector<QueuedCandidate> selected;
     bool allDpsMatch = false;
     bool ok = composer.SelectCandidates(candidates, TEAM_SIZE, true,
-                                        timer, now, selected, allDpsMatch);
+                                        timer, timer, now, selected, allDpsMatch);
 
     EXPECT_FALSE(ok) << "All-DPS match must be blocked before timer expires";
 }
@@ -247,7 +248,7 @@ TEST_F(MatchmakingTest, SelectCandidates_FilterTalentsDisabled_IgnoresRoles)
     std::vector<QueuedCandidate> selected;
     bool allDpsMatch = false;
     bool ok = composer.SelectCandidates(candidates, TEAM_SIZE, false,
-                                        ALL_DPS_TIMER, 100000, selected, allDpsMatch);
+                                        ALL_DPS_TIMER, ALL_DPS_TIMER, 100000, selected, allDpsMatch);
 
     EXPECT_TRUE(ok);
     EXPECT_EQ(selected.size(), 6u);
@@ -275,7 +276,7 @@ TEST_F(MatchmakingTest, SelectCandidates_FIFOOrder_OldestPlayersPickedFirst)
     std::vector<QueuedCandidate> selected;
     bool allDpsMatch = false;
     bool ok = composer.SelectCandidates(candidates, TEAM_SIZE, true,
-                                        ALL_DPS_TIMER, 100000, selected, allDpsMatch);
+                                        ALL_DPS_TIMER, ALL_DPS_TIMER, 100000, selected, allDpsMatch);
 
     EXPECT_TRUE(ok);
     ASSERT_EQ(selected.size(), 6u);
@@ -335,7 +336,7 @@ TEST_F(MatchmakingTest, FindBestTeamSplit_HealersAreAlwaysOnDifferentTeams)
     std::vector<QueuedCandidate> selected;
     bool allDpsMatch = false;
     composer.SelectCandidates(candidates, TEAM_SIZE, true,
-                               ALL_DPS_TIMER, 100000, selected, allDpsMatch);
+                               ALL_DPS_TIMER, ALL_DPS_TIMER, 100000, selected, allDpsMatch);
 
     uint32_t h1 = CountHealers(result.team1Indices, selected);
     uint32_t h2 = CountHealers(result.team2Indices, selected);
@@ -384,7 +385,7 @@ TEST_F(MatchmakingTest, FindBestTeamSplit_LargeHealerMMRSpread_MinDiffIs1000)
     std::vector<QueuedCandidate> selected;
     bool allDpsMatch = false;
     composer.SelectCandidates(candidates, TEAM_SIZE, true,
-                               ALL_DPS_TIMER, 100000, selected, allDpsMatch);
+                               ALL_DPS_TIMER, ALL_DPS_TIMER, 100000, selected, allDpsMatch);
 
     EXPECT_EQ(CountHealers(result.team1Indices, selected), 1u);
     EXPECT_EQ(CountHealers(result.team2Indices, selected), 1u);
@@ -423,7 +424,7 @@ TEST_F(MatchmakingTest, FindBestTeamSplit_NeverWorseThanNaiveSplit)
     std::vector<QueuedCandidate> selected;
     bool allDpsMatch = false;
     composer.SelectCandidates(candidates, TEAM_SIZE, true,
-                               ALL_DPS_TIMER, 100000, selected, allDpsMatch);
+                               ALL_DPS_TIMER, ALL_DPS_TIMER, 100000, selected, allDpsMatch);
 
     auto result = composer.FindBestTeamSplit(selected, TEAM_SIZE, true, allDpsMatch);
     ASSERT_TRUE(result.valid);
@@ -475,7 +476,7 @@ TEST_F(MatchmakingTest, FullPipeline_AllDPS_ProducesBalancedTeams)
     std::vector<QueuedCandidate> selected;
     bool allDpsMatch = false;
     bool ok = composer.SelectCandidates(candidates, TEAM_SIZE, true,
-                                        timer, now, selected, allDpsMatch);
+                                        timer, timer, now, selected, allDpsMatch);
 
     ASSERT_TRUE(ok);
     ASSERT_TRUE(allDpsMatch);
@@ -539,7 +540,7 @@ TEST_F(MatchmakingTest, FullPipeline_VariedMMR_AlwaysOneHealerTwoDPSPerTeam)
         std::vector<QueuedCandidate> selected;
         bool allDpsMatch = false;
         bool ok = composer.SelectCandidates(candidates, TEAM_SIZE, true,
-                                            ALL_DPS_TIMER, 100000, selected, allDpsMatch);
+                                            ALL_DPS_TIMER, ALL_DPS_TIMER, 100000, selected, allDpsMatch);
 
         ASSERT_TRUE(ok) << "Config " << ci << ": selection must succeed";
 
@@ -739,4 +740,87 @@ TEST_F(MatchmakingTest, ClassStacking_Level6_HealerDPSSameClass_BlockedTogether)
     bool druidDPSOnTeam1    = std::find(result.team1Indices.begin(), result.team1Indices.end(), 2u) != result.team1Indices.end();
     EXPECT_NE(druidHealerOnTeam1, druidDPSOnTeam1)
         << "Resto Druid and Balance Druid must not share a team (level 6)";
+}
+
+// ── Single-healer DPS fallback ────────────────────────────────────────────────
+
+/// Test 26: With exactly 1 healer and 6 DPS who have all waited past the
+/// singleHealerDpsTimer, an all-DPS match must form using only the DPS players.
+/// The lone healer is excluded from the selected pool and stays in queue.
+TEST_F(MatchmakingTest, SelectCandidates_SingleHealer_SixTimedDPS_AllDPSFallback_Succeeds)
+{
+    uint32_t const joinTime             = 0;
+    uint32_t const now                  = 65000; // 65 s elapsed — past the 60 s timer
+    uint32_t const singleHealerDpsTimer = ALL_DPS_TIMER;
+
+    auto candidates = MakeCandidates({
+        {PlayerRole::HEALER, DEFAULT_MMR},
+        {PlayerRole::DPS, DEFAULT_MMR}, {PlayerRole::DPS, DEFAULT_MMR},
+        {PlayerRole::DPS, DEFAULT_MMR}, {PlayerRole::DPS, DEFAULT_MMR},
+        {PlayerRole::DPS, DEFAULT_MMR}, {PlayerRole::DPS, DEFAULT_MMR},
+    }, joinTime);
+
+    std::vector<QueuedCandidate> selected;
+    bool allDpsMatch = false;
+    bool ok = composer.SelectCandidates(candidates, TEAM_SIZE, true,
+                                        ALL_DPS_TIMER, singleHealerDpsTimer, now,
+                                        selected, allDpsMatch);
+
+    EXPECT_TRUE(ok)          << "All-DPS fallback must activate with 1 healer + 6 timed DPS";
+    EXPECT_TRUE(allDpsMatch) << "allDpsMatch flag must be set";
+    ASSERT_EQ(selected.size(), 6u);
+
+    uint32_t healerCount = static_cast<uint32_t>(
+        std::count_if(selected.begin(), selected.end(),
+                      [](auto const& c){ return c.role == PlayerRole::HEALER; }));
+    EXPECT_EQ(healerCount, 0u) << "Selected pool must contain no healers (healer excluded)";
+}
+
+/// Test 27: With exactly 1 healer and 6 DPS whose wait time has NOT elapsed,
+/// the single-healer fallback must be blocked.
+TEST_F(MatchmakingTest, SelectCandidates_SingleHealer_SixDPS_BlockedBeforeTimer)
+{
+    uint32_t const joinTime             = 0;
+    uint32_t const now                  = 30000; // only 30 s — timer needs 60 s
+    uint32_t const singleHealerDpsTimer = ALL_DPS_TIMER;
+
+    auto candidates = MakeCandidates({
+        {PlayerRole::HEALER, DEFAULT_MMR},
+        {PlayerRole::DPS, DEFAULT_MMR}, {PlayerRole::DPS, DEFAULT_MMR},
+        {PlayerRole::DPS, DEFAULT_MMR}, {PlayerRole::DPS, DEFAULT_MMR},
+        {PlayerRole::DPS, DEFAULT_MMR}, {PlayerRole::DPS, DEFAULT_MMR},
+    }, joinTime);
+
+    std::vector<QueuedCandidate> selected;
+    bool allDpsMatch = false;
+    bool ok = composer.SelectCandidates(candidates, TEAM_SIZE, true,
+                                        ALL_DPS_TIMER, singleHealerDpsTimer, now,
+                                        selected, allDpsMatch);
+
+    EXPECT_FALSE(ok) << "Single-healer fallback must be blocked before timer expires";
+}
+
+/// Test 28: With exactly 1 healer and only 5 DPS (even after the timer), the
+/// single-healer fallback must NOT form a match — 5 DPS is insufficient for 3v3.
+TEST_F(MatchmakingTest, SelectCandidates_SingleHealer_OnlyFiveDPS_TimerElapsed_ReturnsFalse)
+{
+    uint32_t const joinTime             = 0;
+    uint32_t const now                  = 65000; // timer has elapsed
+    uint32_t const singleHealerDpsTimer = ALL_DPS_TIMER;
+
+    auto candidates = MakeCandidates({
+        {PlayerRole::HEALER, DEFAULT_MMR},
+        {PlayerRole::DPS, DEFAULT_MMR}, {PlayerRole::DPS, DEFAULT_MMR},
+        {PlayerRole::DPS, DEFAULT_MMR}, {PlayerRole::DPS, DEFAULT_MMR},
+        {PlayerRole::DPS, DEFAULT_MMR},
+    }, joinTime);
+
+    std::vector<QueuedCandidate> selected;
+    bool allDpsMatch = false;
+    bool ok = composer.SelectCandidates(candidates, TEAM_SIZE, true,
+                                        ALL_DPS_TIMER, singleHealerDpsTimer, now,
+                                        selected, allDpsMatch);
+
+    EXPECT_FALSE(ok)
+        << "1 healer + 5 DPS must never form a match even after timer — 5 DPS is insufficient";
 }

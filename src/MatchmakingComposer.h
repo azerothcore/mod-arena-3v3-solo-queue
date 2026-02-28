@@ -65,22 +65,25 @@ public:
     /// composition: normal path requires exactly 2 healers + 4 DPS (for
     /// teamSize 3). If no healers are present and every DPS player's wait time
     /// has exceeded @p allDpsTimer an all-DPS match is allowed instead.
-    /// A queue with exactly 1 healer cannot form a valid match.
+    /// If exactly 1 healer is present and 6+ DPS have waited beyond
+    /// @p singleHealerDpsTimer, an all-DPS match is formed with those DPS
+    /// while the lone healer remains in queue.
     ///
-    /// @param candidates    All eligible queued candidates in FIFO order.
-    /// @param teamSize      Players per team (normally 3).
-    /// @param filterTalents Enforce role-based composition rules.
-    /// @param allDpsTimer   Wait time (ms) a DPS player must have queued before
-    ///                      an all-DPS fallback match is allowed.
-    /// @param now           Current timestamp in ms.
-    /// @param[out] selected Chosen candidates (size == teamSize*2 on success).
-    /// @param[out] allDpsMatch Set to true when the all-DPS fallback is used.
+    /// @param candidates            All eligible queued candidates in FIFO order.
+    /// @param teamSize              Players per team (normally 3).
+    /// @param filterTalents         Enforce role-based composition rules.
+    /// @param allDpsTimer           Wait time (ms) before all-DPS fallback when no healers.
+    /// @param singleHealerDpsTimer  Wait time (ms) before all-DPS fallback when 1 healer.
+    /// @param now                   Current timestamp in ms.
+    /// @param[out] selected         Chosen candidates (size == teamSize*2 on success).
+    /// @param[out] allDpsMatch      Set to true when the all-DPS fallback is used.
     /// @returns true if a full set of candidates was selected.
     bool SelectCandidates(
         std::vector<QueuedCandidate> const& candidates,
         uint32_t                            teamSize,
         bool                                filterTalents,
         uint32_t                            allDpsTimer,
+        uint32_t                            singleHealerDpsTimer,
         uint32_t                            now,
         std::vector<QueuedCandidate>&       selected,
         bool&                               allDpsMatch) const
@@ -137,7 +140,24 @@ public:
                 return true;
             }
         }
-        // Exactly 1 healer: unbalanced composition — cannot form a valid match
+        else if (healers.size() == 1)
+        {
+            // Single-healer fallback: if enough DPS have waited long enough, start an
+            // all-DPS match with those DPS. The lone healer stays in queue waiting for
+            // a second healer. A match with only 1 healer + 5 DPS is never formed.
+            std::vector<QueuedCandidate> timedDps;
+            for (auto const& c : dps)
+                if (c.joinTime + singleHealerDpsTimer <= now)
+                    timedDps.push_back(c);
+
+            if (timedDps.size() >= teamSize * 2)
+            {
+                for (uint32_t i = 0; i < teamSize * 2; ++i)
+                    selected.push_back(timedDps[i]);
+                allDpsMatch = true;
+                return true;
+            }
+        }
 
         return false;
     }

@@ -21,7 +21,9 @@
 #include "Common.h"
 #include "ArenaTeamMgr.h"
 #include "BattlegroundMgr.h"
+#include "ObjectGuid.h"
 #include "Player.h"
+#include <unordered_map>
 
 // Custom 1v1 Arena Rated
 constexpr uint32 BATTLEGROUND_QUEUE_1v1 = 11;
@@ -112,6 +114,21 @@ enum Solo3v3TalentCat
 
 #define BG_TEAMS_COUNT 2
 
+struct ArenaTeamsRating
+{
+    uint32 allianceRating = 0;
+    uint32 hordeRating    = 0;
+    uint8  playersCount   = 0;
+};
+
+struct ArenaParticipant
+{
+    uint32 instanceId       = 0;
+    TeamId teamId           = TEAM_NEUTRAL;
+    uint32 arenaTeamId      = 0;
+    bool   alreadyProcessed = false; // true if CountAsLoss already ran (alive in-progress leaver)
+};
+
 class Solo3v3
 {
 public:
@@ -123,6 +140,17 @@ public:
     bool CheckSolo3v3Arena(BattlegroundQueue* queue, BattlegroundBracketId bracket_id, bool isRated);
     void CreateTempArenaTeamForQueue(BattlegroundQueue* queue, ArenaTeam* arenaTeams[]);
     void CountAsLoss(Player* player, bool isInProgress);
+
+    // Track players in active solo arena matches to prevent re-queuing mid-match
+    // and to apply rating at match end for players who left early.
+    void RegisterArenaParticipants(Battleground* bg);
+    void CleanUpArenaParticipants(uint32 instanceId);
+    bool IsPlayerInActiveArena(ObjectGuid guid) const;
+    void ProcessAbsentParticipants(Battleground* bg, TeamId winnerTeamId);
+
+    // Pre-match team ratings, stored at queue time and used for rating delta calculation.
+    // Public so OnQueueUpdate and OnBattlegroundEndReward in solo3v3_sc.cpp can access it.
+    std::unordered_map<uint32, ArenaTeamsRating> bgArenaTeamsRating;
 
     // Return false, if player have invested more than 35 talentpoints in a forbidden talenttree.
     bool Arena3v3CheckTalents(Player* player);
@@ -194,6 +222,11 @@ private:
         uint32 MinPlayers);
 
     std::unordered_set<uint32> arenasWithDeserter;
+
+    // Maps player GUID to their participation data for the ongoing solo arena match.
+    // Players remain registered until the arena is fully destroyed, blocking re-queuing
+    // and enabling rating processing for players who left early.
+    std::unordered_map<ObjectGuid, ArenaParticipant> playerArenaInstance;
 };
 
 #define sSolo Solo3v3::instance()

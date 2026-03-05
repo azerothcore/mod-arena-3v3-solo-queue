@@ -60,10 +60,10 @@ void Solo3v3::CountAsLoss(Player* player, bool isInProgress)
     int32 ratingLoss = 0;
     uint32 instanceId = 0;
 
-    bool playerLeftAlive = player->IsAlive();
-
     if (Battleground* bg = player->GetBattleground())
         instanceId = bg->GetInstanceID();
+
+    bool playerLeftAlive = player->IsAlive();
 
     // leave while arena is in progress but player is already dead - no penalty
     if (isInProgress && !playerLeftAlive)
@@ -82,12 +82,20 @@ void Solo3v3::CountAsLoss(Player* player, bool isInProgress)
             if (sConfigMgr->GetOption<bool>("Solo.3v3.CastDeserterOnLeave", true))
                 player->CastSpell(player, 26013, true);
         }
+
+        // Mark as already processed so ProcessAbsentParticipants skips this player
+        // and does not apply a second rating change at match end.
+        auto it = playerArenaInstance.find(player->GetGUID());
+        if (it != playerArenaInstance.end())
+            it->second.alreadyProcessed = true;
     }
     else
     {
         // leave while arena is in preparation || don't accept queue || logout while invited
         ratingLoss = sConfigMgr->GetOption<int32>("Solo.3v3.RatingPenalty.LeaveBeforeMatchStart", 50);
-        player->CastSpell(player, 26013, true);
+
+        if (sConfigMgr->GetOption<bool>("Solo.3v3.CastDeserterOnLeave", true))
+            player->CastSpell(player, 26013, true);
     }
 
     ArenaTeamStats atStats = plrArenaTeam->GetStats();
@@ -135,7 +143,11 @@ void Solo3v3::CleanUp3v3SoloQ(Battleground* bg)
     {
         uint32 instanceId = bg->GetInstanceID();
         if (instanceId)
+        {
             arenasWithDeserter.erase(instanceId);
+            CleanUpArenaParticipants(instanceId);
+            bgArenaTeamsRating.erase(instanceId);
+        }
 
         ArenaTeam* tempAlliArenaTeam = sArenaTeamMgr->GetArenaTeamById(bg->GetArenaTeamIdForTeam(TEAM_ALLIANCE));
         ArenaTeam* tempHordeArenaTeam = sArenaTeamMgr->GetArenaTeamById(bg->GetArenaTeamIdForTeam(TEAM_HORDE));
@@ -249,7 +261,12 @@ void Solo3v3::CheckStartSolo3v3Arena(Battleground* bg)
         SaveIncompleteMatchLogs(bg);
         bg->SetRated(false);
         bg->EndBattleground(TEAM_NEUTRAL);
+        return;
     }
+
+    // All players present: register them so they cannot re-queue until the match ends
+    if (bg->isRated())
+        RegisterArenaParticipants(bg);
 }
 
 uint32 Solo3v3::GetMMR(Player* player, GroupQueueInfo* ginfo)
@@ -733,4 +750,143 @@ bool Solo3v3::HasIgnoreConflict(Player* candidate, BattlegroundQueue* queue, uin
         }
     }
     return false;
+}
+
+void Solo3v3::RegisterArenaParticipants(Battleground* bg)
+{
+    uint32 instanceId = bg->GetInstanceID();
+    if (!instanceId)
+        return;
+
+    for (auto const& [guid, player] : bg->GetPlayers())
+    {
+        if (player->IsSpectator())
+            continue;
+
+        ArenaParticipant p;
+        p.instanceId  = instanceId;
+        p.teamId      = player->GetBgTeamId();
+        p.arenaTeamId = player->GetArenaTeamId(ARENA_SLOT_SOLO_3v3);
+        playerArenaInstance[guid] = p;
+    }
+}
+
+bool Solo3v3::IsPlayerInActiveArena(ObjectGuid guid) const
+{
+    return playerArenaInstance.count(guid) > 0;
+}
+
+void Solo3v3::ProcessAbsentParticipants(Battleground* bg, TeamId winnerTeamId)
+{
+    uint32 instanceId = bg->GetInstanceID();
+    auto& ratingInfo  = bgArenaTeamsRating[instanceId];
+
+    for (auto& [guid, p] : playerArenaInstance)
+    {
+        if (p.instanceId != instanceId)
+            continue;
+
+        if (p.alreadyProcessed) // alive leaver: flat penalty already applied by CountAsLoss
+            continue;
+
+        if (bg->GetPlayers().count(guid)) // still inside the BG: OnBattlegroundEndReward handles them
+            continue;
+
+        ArenaTeam* plrArenaTeam = sArenaTeamMgr->GetArenaTeamById(p.arenaTeamId);
+        if (!plrArenaTeam)
+            continue;
+
+        ArenaTeamStats atStats = plrArenaTeam->GetStats();
+        atStats.SeasonGames += 1;
+        atStats.WeekGames   += 1;
+
+        if (winnerTeamId != TEAM_NEUTRAL)
+        {
+            const bool isWinner = (p.teamId == winnerTeamId);
+            int32  ratingModifier;
+            uint32 oldTeamRating;
+
+            if (isWinner)
+            {
+                ArenaTeam* winnerTeam = sArenaTeamMgr->GetArenaTeamById(bg->GetArenaTeamIdForTeam(winnerTeamId));
+                oldTeamRating  = (winnerTeamId == TEAM_HORDE) ? ratingInfo.hordeRating : ratingInfo.allianceRating;
+                ratingModifier = winnerTeam ? int32(winnerTeam->GetRating()) - oldTeamRating : 0;
+                atStats.SeasonWins += 1;
+                atStats.WeekWins   += 1;
+            }
+            else
+            {
+                TeamId loserTeamId   = bg->GetOtherTeamId(winnerTeamId);
+                ArenaTeam* loserTeam = sArenaTeamMgr->GetArenaTeamById(bg->GetArenaTeamIdForTeam(loserTeamId));
+                oldTeamRating  = (winnerTeamId == TEAM_HORDE) ? ratingInfo.allianceRating : ratingInfo.hordeRating;
+                ratingModifier = loserTeam ? int32(loserTeam->GetRating()) - oldTeamRating : 0;
+            }
+
+            if (int32(atStats.Rating) + ratingModifier < 0)
+                atStats.Rating = 0;
+            else
+                atStats.Rating += ratingModifier;
+
+            atStats.Rank = 1;
+            for (auto i = sArenaTeamMgr->GetArenaTeamMapBegin(); i != sArenaTeamMgr->GetArenaTeamMapEnd(); ++i)
+                if (i->second->GetType() == ARENA_TEAM_SOLO_3v3 && i->second->GetStats().Rating > atStats.Rating)
+                    ++atStats.Rank;
+
+            for (auto& member : plrArenaTeam->GetMembers())
+            {
+                if (member.Guid != guid)
+                    continue;
+
+                member.PersonalRating = atStats.Rating;
+                member.WeekGames      += 1;
+                member.SeasonGames    += 1;
+
+                if (isWinner)
+                {
+                    member.WeekWins         += 1;
+                    member.SeasonWins       += 1;
+                    member.MatchMakerRating += ratingModifier;
+                    member.MaxMMR = std::max(member.MaxMMR, member.MatchMakerRating);
+                }
+                else
+                {
+                    if (int32(member.MatchMakerRating) + ratingModifier < 0)
+                        member.MatchMakerRating = 0;
+                    else
+                        member.MatchMakerRating += ratingModifier;
+                }
+                break;
+            }
+        }
+        else
+        {
+            // Draw: update game counts only, no rating change
+            for (auto& member : plrArenaTeam->GetMembers())
+            {
+                if (member.Guid != guid)
+                    continue;
+                member.WeekGames   += 1;
+                member.SeasonGames += 1;
+                break;
+            }
+        }
+
+        plrArenaTeam->SetArenaTeamStats(atStats);
+        plrArenaTeam->NotifyStatsChanged();
+        plrArenaTeam->SaveToDB(true);
+
+        p.alreadyProcessed = true;
+    }
+}
+
+void Solo3v3::CleanUpArenaParticipants(uint32 instanceId)
+{
+    auto it = playerArenaInstance.begin();
+    while (it != playerArenaInstance.end())
+    {
+        if (it->second.instanceId == instanceId)
+            it = playerArenaInstance.erase(it);
+        else
+            ++it;
+    }
 }

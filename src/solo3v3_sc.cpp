@@ -379,18 +379,19 @@ bool NpcSolo3v3::OnGossipSelect(Player* player, Creature* creature, uint32 /*sen
                 ChatHandler(player->GetSession()).PSendSysMessage("{}", s.str().c_str());
                 CloseGossipMenuFor(player);
 
-                ArenaTeam::MemberList::iterator itr;
-                for (itr = at->GetMembers().begin(); itr != at->GetMembers().end(); ++itr)
-                {
-                    if (itr->Guid == player->GetGUID())
-                    {
-                        std::stringstream s;
-                        s << "\nSolo MMR: " << itr->MatchMakerRating;
+                // Query MMR from database
+                CharacterDatabasePreparedStatement* stmt = CharacterDatabase.GetPreparedStatement(CHAR_SEL_MATCH_MAKER_RATING);
+                stmt->SetData(0, player->GetGUID().GetCounter());
+                stmt->SetData(1, ARENA_SLOT_SOLO_3v3);
+                PreparedQueryResult result = CharacterDatabase.Query(stmt);
 
-                        ChatHandler(player->GetSession()).PSendSysMessage("{}", s.str().c_str());
-                        break;
-                    }
-                }
+                uint16 matchMakerRating;
+                if (result)
+                    matchMakerRating = (*result)[0].Get<uint16>();
+                else
+                    matchMakerRating = sWorld->getIntConfig(CONFIG_ARENA_START_MATCHMAKER_RATING);
+
+                ChatHandler(player->GetSession()).PSendSysMessage("Solo MMR: {}", matchMakerRating);
             }
 
             return true;

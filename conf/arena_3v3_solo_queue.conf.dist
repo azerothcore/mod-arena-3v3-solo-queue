@@ -33,6 +33,27 @@ Solo.3v3.EnableTestingCommand = 1
 Solo.3v3.FilterTalents = 1
 
 #
+#    Solo.3v3.MinGearScore
+#        Description: Minimum GearScore required.
+#        Default: 0 (disabled)
+#
+Solo.3v3.MinGearScore = 0
+
+#
+#    Solo.3v3.Requirements.MinAvgItemLevel
+#        Description: Minimum average equipped item level.
+#        Default: 0 (disabled)
+#
+Solo.3v3.MinAvgItemLevel = 0
+
+#
+#    Solo.3v3.MinItemQuality
+#        Description: Minimum item quality required for all equipped items.
+#        Default: 0 (disabled) 3 (Rare) 4 (Epic)
+#
+Solo.3v3.MinItemQuality = 0
+
+#
 #    Solo.3v3.FilterTalents.AllDPSTimer
 #        Description: When Solo.3v3.FilterTalents is enabled, this timer (in seconds) allows players
 #                     to wait for a certain time in the queue before being allowed to fill a 3rd DPS

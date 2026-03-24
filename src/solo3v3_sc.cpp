@@ -769,16 +769,59 @@ void Solo3v3BG::OnBattlegroundEndReward(Battleground* bg, Player* player, TeamId
         atStats.SeasonGames += 1;
         atStats.WeekGames += 1;
 
-        // Draw: do not modify rating or MMR
+        // Draw
         if (winnerTeamId == TEAM_NEUTRAL)
         {
-            for (ArenaTeam::MemberList::iterator itr = plrArenaTeam->GetMembers().begin(); itr != plrArenaTeam->GetMembers().end(); ++itr)
+            if (!sConfigMgr->GetOption<bool>("Solo.3v3.NoRatingChangeOnDraw", false))
             {
-                if (itr->Guid == player->GetGUID())
+                // Official behavior: both teams lose rating and MMR on a draw
+                uint32 allianceOldRating = sSolo->bgArenaTeamsRating[bg->GetInstanceID()].allianceRating;
+                uint32 hordeOldRating    = sSolo->bgArenaTeamsRating[bg->GetInstanceID()].hordeRating;
+
+                TeamId bgTeamId  = player->GetBgTeamId();
+                uint32 ownOldRating = (bgTeamId == TEAM_ALLIANCE) ? allianceOldRating : hordeOldRating;
+                uint32 oppOldRating = (bgTeamId == TEAM_ALLIANCE) ? hordeOldRating : allianceOldRating;
+
+                int32 ratingModifier = plrArenaTeam->GetRatingMod(ownOldRating, oppOldRating, false);
+                int32 mmrModifier    = plrArenaTeam->GetMatchmakerRatingMod(ownOldRating, oppOldRating, false);
+
+                if (int32(atStats.Rating) + ratingModifier < 0)
+                    atStats.Rating = 0;
+                else
+                    atStats.Rating += ratingModifier;
+
+                atStats.Rank = 1;
+                for (auto i = sArenaTeamMgr->GetArenaTeamMapBegin(); i != sArenaTeamMgr->GetArenaTeamMapEnd(); ++i)
+                    if (i->second->GetType() == ARENA_TEAM_SOLO_3v3 && i->second->GetStats().Rating > atStats.Rating)
+                        ++atStats.Rank;
+
+                for (ArenaTeam::MemberList::iterator itr = plrArenaTeam->GetMembers().begin(); itr != plrArenaTeam->GetMembers().end(); ++itr)
                 {
-                    itr->WeekGames += 1;
-                    itr->SeasonGames += 1;
-                    break;
+                    if (itr->Guid == player->GetGUID())
+                    {
+                        itr->PersonalRating = atStats.Rating;
+                        itr->WeekGames   += 1;
+                        itr->SeasonGames += 1;
+
+                        if (int32(itr->MatchMakerRating) + mmrModifier < 0)
+                            itr->MatchMakerRating = 0;
+                        else
+                            itr->MatchMakerRating += mmrModifier;
+                        break;
+                    }
+                }
+            }
+            else
+            {
+                // No rating or MMR changes on draw
+                for (ArenaTeam::MemberList::iterator itr = plrArenaTeam->GetMembers().begin(); itr != plrArenaTeam->GetMembers().end(); ++itr)
+                {
+                    if (itr->Guid == player->GetGUID())
+                    {
+                        itr->WeekGames += 1;
+                        itr->SeasonGames += 1;
+                        break;
+                    }
                 }
             }
 

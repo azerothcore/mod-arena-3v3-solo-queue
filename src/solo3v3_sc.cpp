@@ -790,6 +790,7 @@ void Solo3v3BG::OnBattlegroundEndReward(Battleground* bg, Player* player, TeamId
             {
                 sSolo->ProcessAbsentParticipants(bg, TEAM_NEUTRAL);
                 sSolo->bgArenaTeamsRating.erase(bg->GetInstanceID());
+                sSolo->CleanUpArenaParticipants(bg->GetInstanceID());
             }
 
             return;
@@ -863,6 +864,7 @@ void Solo3v3BG::OnBattlegroundEndReward(Battleground* bg, Player* player, TeamId
         {
             sSolo->ProcessAbsentParticipants(bg, winnerTeamId);
             sSolo->bgArenaTeamsRating.erase(bg->GetInstanceID());
+            sSolo->CleanUpArenaParticipants(bg->GetInstanceID());
         }
     }
 }

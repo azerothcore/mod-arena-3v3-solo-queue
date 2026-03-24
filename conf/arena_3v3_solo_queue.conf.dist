@@ -71,9 +71,9 @@ Solo.3v3.FilterTalents.AllDPSTimer = 60
 #                     to form an all-DPS match after waiting long enough. The lone healer remains
 #                     in queue waiting for a second healer. A match with only 1 healer and 5 DPS
 #                     is never started.
-#        Value:     60 - (60 seconds)
+#        Value:     90 - (90 seconds)
 #
-Solo.3v3.FilterTalents.SingleHealerDPSTimer = 60
+Solo.3v3.FilterTalents.SingleHealerDPSTimer = 90
 
 #
 #    Solo.3v3.AvoidSameTeamIgnore

@@ -475,7 +475,7 @@ bool Solo3v3::CheckSolo3v3Arena(BattlegroundQueue* queue, BattlegroundBracketId 
     bool   const filterTalents          = sConfigMgr->GetOption<bool>("Solo.3v3.FilterTalents", false);
     bool   const avoidIgnore            = sConfigMgr->GetOption<bool>("Solo.3v3.AvoidSameTeamIgnore", true);
     uint32 const allDpsTimerMs          = sConfigMgr->GetOption<uint32>("Solo.3v3.FilterTalents.AllDPSTimer", 60) * 1000;
-    uint32 const singleHealerDpsTimerMs = sConfigMgr->GetOption<uint32>("Solo.3v3.FilterTalents.SingleHealerDPSTimer", 60) * 1000;
+    uint32 const singleHealerDpsTimerMs = sConfigMgr->GetOption<uint32>("Solo.3v3.FilterTalents.SingleHealerDPSTimer", 90) * 1000;
     uint8  const preventClassStacking   = sConfigMgr->GetOption<uint8>("Solo.3v3.PreventClassStacking", 0);
     uint32 const classStackMask         = sConfigMgr->GetOption<uint32>("Solo.3v3.PreventClassStacking.Classes", 0);
 

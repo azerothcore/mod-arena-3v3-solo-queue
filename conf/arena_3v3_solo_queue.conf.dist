@@ -172,3 +172,12 @@ Solo.3v3.ArenaPointsMinLevel = 70
 Solo.3v3.VendorRating = 0
 
 Solo.3v3.ShowMessageOnLogin = 0
+
+#
+#    Solo.3v3.LeaverLog
+#        Description: Log information about players who leave or desert solo 3v3 arenas.
+#                     Logs include player name, GUID, rating loss, and desertion type.
+#        Default:     0 - (false)
+#                     1 - (true)
+
+Solo.3v3.LeaverLog = 0

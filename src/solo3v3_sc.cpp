@@ -381,7 +381,7 @@ bool NpcSolo3v3::OnGossipSelect(Player* player, Creature* creature, uint32 /*sen
 
                 // Query MMR from database
                 CharacterDatabasePreparedStatement* stmt = CharacterDatabase.GetPreparedStatement(CHAR_SEL_MATCH_MAKER_RATING);
-                stmt->SetData(0, player->GetGUID().GetCounter());
+                stmt->SetData(0, player->GetGUID().ToString());
                 stmt->SetData(1, ARENA_SLOT_SOLO_3v3);
                 PreparedQueryResult result = CharacterDatabase.Query(stmt);
 
@@ -939,7 +939,7 @@ void PlayerScript3v3Arena::OnPlayerBattlegroundDesertion(Player* player, const B
                 {
                     if (sConfigMgr->GetOption<bool>("Solo.3v3.LeaverLog", false))
                         LOG_INFO("solo3v3", "Player {} (GUID: {}) left arena (instanceId: {}) during preparation phase",
-                            player->GetName(), player->GetGUID().GetCounter(), bg->GetInstanceID());
+                            player->GetName(), player->GetGUID().ToString(), bg->GetInstanceID());
 
                     if (sConfigMgr->GetOption<bool>("Solo.3v3.CastDeserterOnAfk", true) || sConfigMgr->GetOption<bool>("Solo.3v3.CastDeserterOnLeave", true))
                         player->CastSpell(player, 26013, true);
@@ -959,7 +959,7 @@ void PlayerScript3v3Arena::OnPlayerBattlegroundDesertion(Player* player, const B
                 {
                     if (sConfigMgr->GetOption<bool>("Solo.3v3.LeaverLog", false))
                         LOG_INFO("solo3v3", "Player {} (GUID: {}) left arena (instanceId: {}) during in-progress match (alive: {})",
-                            player->GetName(), player->GetGUID().GetCounter(), bg->GetInstanceID(), player->IsAlive());
+                            player->GetName(), player->GetGUID().ToString(), bg->GetInstanceID(), player->IsAlive());
 
                     sSolo->CountAsLoss(player, true);
                 }
@@ -972,7 +972,7 @@ void PlayerScript3v3Arena::OnPlayerBattlegroundDesertion(Player* player, const B
             {
                 if (sConfigMgr->GetOption<bool>("Solo.3v3.LeaverLog", false))
                     LOG_INFO("solo3v3", "Player {} (GUID: {}) did not click enter arena button (AFK desertion)",
-                        player->GetName(), player->GetGUID().GetCounter());
+                        player->GetName(), player->GetGUID().ToString());
 
                 if (sConfigMgr->GetOption<bool>("Solo.3v3.CastDeserterOnAfk", true))
                     player->CastSpell(player, 26013, true);
@@ -987,7 +987,7 @@ void PlayerScript3v3Arena::OnPlayerBattlegroundDesertion(Player* player, const B
             {
                 if (sConfigMgr->GetOption<bool>("Solo.3v3.LeaverLog", false))
                     LOG_INFO("solo3v3", "Player {} (GUID: {}) logged out while invited to arena (queue pop logout)",
-                        player->GetName(), player->GetGUID().GetCounter());
+                        player->GetName(), player->GetGUID().ToString());
 
                 if (sConfigMgr->GetOption<bool>("Solo.3v3.CastDeserterOnAfk", true) || sConfigMgr->GetOption<bool>("Solo.3v3.CastDeserterOnLeave", true))
                     player->CastSpell(player, 26013, true);

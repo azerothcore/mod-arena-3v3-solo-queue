@@ -67,7 +67,12 @@ void Solo3v3::CountAsLoss(Player* player, bool isInProgress)
 
     // leave while arena is in progress but player is already dead - no penalty
     if (isInProgress && !playerLeftAlive)
+    {
+        if (sConfigMgr->GetOption<bool>("Solo.3v3.LeaverLog", false))
+            LOG_INFO("solo3v3", "Player {} (GUID: {}) left arena (instanceId: {}) while dead during in-progress match - no penalty",
+                player->GetName(), player->GetGUID().ToString(), instanceId);
         return;
+    }
 
     // leave while arena is in progress
     if (isInProgress && playerLeftAlive)
@@ -134,6 +139,11 @@ void Solo3v3::CountAsLoss(Player* player, bool isInProgress)
     plrArenaTeam->SetArenaTeamStats(atStats);
     plrArenaTeam->NotifyStatsChanged();
     plrArenaTeam->SaveToDB(true);
+
+    if (sConfigMgr->GetOption<bool>("Solo.3v3.LeaverLog", false))
+        LOG_INFO("solo3v3", "Player {} (GUID: {}) deserted arena (instanceId: {}). Rating loss: {}. New rating: {}. {}",
+            player->GetName(), player->GetGUID().ToString(), instanceId, ratingLoss, atStats.Rating,
+            isInProgress ? "Left during match (alive)" : "Left before match start");
 }
 
 void Solo3v3::CleanUp3v3SoloQ(Battleground* bg)

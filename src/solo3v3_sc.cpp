@@ -855,6 +855,15 @@ void Solo3v3BG::OnBattlegroundEndReward(Battleground* bg, Player* player, TeamId
 
         }
 
+        if (sConfigMgr->GetOption<bool>("Solo.3v3.Replace5v5Achievements", false))
+        {
+            player->UpdateAchievementCriteria(ACHIEVEMENT_CRITERIA_TYPE_HIGHEST_PERSONAL_RATING, atStats.Rating, ARENA_TYPE_5v5);
+            player->UpdateAchievementCriteria(ACHIEVEMENT_CRITERIA_TYPE_HIGHEST_TEAM_RATING, atStats.Rating, ARENA_TYPE_5v5);
+
+            if (isPlayerWinning && player->IsAlive() && bg->GetAlivePlayersCountByTeam(winnerTeamId) == 1)
+                player->CastSpell(player, SPELL_LAST_MAN_STANDING, true);
+        }
+
         plrArenaTeam->SetArenaTeamStats(atStats);
         plrArenaTeam->NotifyStatsChanged();
         plrArenaTeam->SaveToDB(true);

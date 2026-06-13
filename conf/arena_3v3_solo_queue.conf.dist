@@ -23,6 +23,19 @@ Solo.3v3.EnableCommand = 1
 Solo.3v3.EnableTestingCommand = 1
 
 
+#
+#   Solo.3v3.Replace5v5Achievements
+#       Description: When enabled, 3v3 solo queue counts toward the 5v5 arena bracket
+#                    achievements/criteria.
+#
+#       Default: 0 - (disabled)
+#       Value:   1 - (true)
+#                0 - (false)
+#
+
+Solo.3v3.Replace5v5Achievements = 0
+
+
 #   Solo.3v3.FilterTalents
 #       Description: When enabled, the matchmaker will attempt to create more balanced teams by considering players' talent specializations.
 #                    It will try to avoid placing too many players of the same role (DPS, healer, tank) on the same team, which can lead

@@ -803,6 +803,19 @@ bool Solo3v3::IsPlayerInActiveArena(ObjectGuid guid) const
     return playerArenaInstance.count(guid) > 0;
 }
 
+void Solo3v3::MarkArenaParticipantDead(ObjectGuid guid)
+{
+    auto it = playerArenaInstance.find(guid);
+    if (it != playerArenaInstance.end())
+        it->second.died = true;
+}
+
+bool Solo3v3::DidArenaParticipantDie(ObjectGuid guid) const
+{
+    auto it = playerArenaInstance.find(guid);
+    return it != playerArenaInstance.end() && it->second.died;
+}
+
 void Solo3v3::ProcessAbsentParticipants(Battleground* bg, TeamId winnerTeamId)
 {
     uint32 instanceId = bg->GetInstanceID();

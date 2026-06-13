@@ -129,6 +129,7 @@ struct ArenaParticipant
     TeamId teamId           = TEAM_NEUTRAL;
     uint32 arenaTeamId      = 0;
     bool   alreadyProcessed = false; // true if CountAsLoss already ran (alive in-progress leaver)
+    bool   died             = false; // died during the match
 };
 
 class Solo3v3
@@ -148,6 +149,9 @@ public:
     void RegisterArenaParticipants(Battleground* bg);
     void CleanUpArenaParticipants(uint32 instanceId);
     bool IsPlayerInActiveArena(ObjectGuid guid) const;
+
+    void MarkArenaParticipantDead(ObjectGuid guid);
+    bool DidArenaParticipantDie(ObjectGuid guid) const;
     void ProcessAbsentParticipants(Battleground* bg, TeamId winnerTeamId);
 
     // Pre-match team ratings, stored at queue time and used for rating delta calculation.

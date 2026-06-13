@@ -113,7 +113,8 @@ public:
         PLAYERHOOK_ON_GET_ARENA_TEAM_ID,
         PLAYERHOOK_NOT_SET_ARENA_TEAM_INFO_FIELD,
         PLAYERHOOK_CAN_BATTLEFIELD_PORT,
-        PLAYERHOOK_ON_BATTLEGROUND_DESERTION
+        PLAYERHOOK_ON_BATTLEGROUND_DESERTION,
+        PLAYERHOOK_ON_PLAYER_JUST_DIED
     }) {}
 
     void OnPlayerLogin(Player* pPlayer) override;
@@ -123,6 +124,7 @@ public:
     bool OnPlayerNotSetArenaTeamInfoField(Player* player, uint8 slot, ArenaTeamInfoType type, uint32 value) override;
     bool OnPlayerCanBattleFieldPort(Player* player, uint8 arenaType, BattlegroundTypeId BGTypeID, uint8 action) override;
     void OnPlayerBattlegroundDesertion(Player* player, const BattlegroundDesertionType type) override;
+    void OnPlayerJustDied(Player* player) override;
 };
 
 class Arena_SC : public ArenaScript

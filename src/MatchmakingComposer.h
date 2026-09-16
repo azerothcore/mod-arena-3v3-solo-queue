@@ -65,15 +65,15 @@ public:
     /// composition: normal path requires exactly 2 healers + 4 DPS (for
     /// teamSize 3). If no healers are present and every DPS player's wait time
     /// has exceeded @p allDpsTimer an all-DPS match is allowed instead.
-    /// If exactly 1 healer is present and 6+ DPS have waited beyond
-    /// @p singleHealerDpsTimer, an all-DPS match is formed with those DPS
-    /// while the lone healer remains in queue.
+    /// If exactly 1 healer is present and at least teamSize*2-1 DPS have waited
+    /// beyond @p singleHealerDpsTimer, the healer and those DPS are selected
+    /// (1 healer + 2 DPS vs 3 DPS for teamSize 3).
     ///
     /// @param candidates            All eligible queued candidates in FIFO order.
     /// @param teamSize              Players per team (normally 3).
     /// @param filterTalents         Enforce role-based composition rules.
     /// @param allDpsTimer           Wait time (ms) before all-DPS fallback when no healers.
-    /// @param singleHealerDpsTimer  Wait time (ms) before all-DPS fallback when 1 healer.
+    /// @param singleHealerDpsTimer  Wait time (ms) before a lone healer plays with DPS only.
     /// @param now                   Current timestamp in ms.
     /// @param[out] selected         Chosen candidates (size == teamSize*2 on success).
     /// @param[out] allDpsMatch      Set to true when the all-DPS fallback is used.
@@ -142,19 +142,19 @@ public:
         }
         else if (healers.size() == 1)
         {
-            // Single-healer fallback: if enough DPS have waited long enough, start an
-            // all-DPS match with those DPS. The lone healer stays in queue waiting for
-            // a second healer. A match with only 1 healer + 5 DPS is never formed.
+            // Single-healer fallback: once enough DPS have waited past the timer, the lone
+            // healer plays with them (e.g. 1 healer + 2 DPS vs 3 DPS) instead of waiting
+            // indefinitely for a second healer.
             std::vector<QueuedCandidate> timedDps;
             for (auto const& c : dps)
                 if (c.joinTime + singleHealerDpsTimer <= now)
                     timedDps.push_back(c);
 
-            if (timedDps.size() >= teamSize * 2)
+            if (timedDps.size() >= teamSize * 2 - 1)
             {
-                for (uint32_t i = 0; i < teamSize * 2; ++i)
+                selected.push_back(healers[0]);
+                for (uint32_t i = 0; i < teamSize * 2 - 1; ++i)
                     selected.push_back(timedDps[i]);
-                allDpsMatch = true;
                 return true;
             }
         }
@@ -320,8 +320,9 @@ private:
                 for (uint32_t i : team2)
                     if (selected[i].role == PlayerRole::HEALER) ++h2;
 
-                if (allDpsMatch  && (h1 != 0 || h2 != 0)) return;
-                if (!allDpsMatch && (h1 != 1 || h2 != 1)) return;
+                // Never stack healers: 2 healers are split 1/1, a lone healer goes 1/0
+                if (allDpsMatch && (h1 != 0 || h2 != 0)) return;
+                if (h1 > 1 || h2 > 1) return;
             }
 
             // Class stacking constraint

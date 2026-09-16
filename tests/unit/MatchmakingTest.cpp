@@ -171,7 +171,7 @@ TEST_F(MatchmakingTest, SelectCandidates_InsufficientPlayers_ReturnsFalse)
 }
 
 /// Test 3: With exactly 1 healer and 5 DPS the composition is unbalanced;
-/// no valid match can be formed (cannot assign 1 healer to each team).
+/// no match can be formed before the single-healer timer elapses.
 TEST_F(MatchmakingTest, SelectCandidates_ExactlyOneHealer_UnbalancedComposition_ReturnsFalse)
 {
     auto candidates = MakeCandidates({
@@ -184,9 +184,9 @@ TEST_F(MatchmakingTest, SelectCandidates_ExactlyOneHealer_UnbalancedComposition_
     std::vector<QueuedCandidate> selected;
     bool allDpsMatch = false;
     bool ok = composer.SelectCandidates(candidates, TEAM_SIZE, true,
-                                        ALL_DPS_TIMER, ALL_DPS_TIMER, 100000, selected, allDpsMatch);
+                                        ALL_DPS_TIMER, ALL_DPS_TIMER, 30000, selected, allDpsMatch);
 
-    EXPECT_FALSE(ok) << "1 healer cannot be distributed fairly between two teams";
+    EXPECT_FALSE(ok) << "1 healer cannot be distributed fairly between two teams before the timer";
 }
 
 /// Test 4: When there are no healers and all DPS players have waited long
@@ -745,9 +745,8 @@ TEST_F(MatchmakingTest, ClassStacking_Level6_HealerDPSSameClass_BlockedTogether)
 // ── Single-healer DPS fallback ────────────────────────────────────────────────
 
 /// Test 26: With exactly 1 healer and 6 DPS who have all waited past the
-/// singleHealerDpsTimer, an all-DPS match must form using only the DPS players.
-/// The lone healer is excluded from the selected pool and stays in queue.
-TEST_F(MatchmakingTest, SelectCandidates_SingleHealer_SixTimedDPS_AllDPSFallback_Succeeds)
+/// singleHealerDpsTimer, the healer is selected with the 5 oldest DPS.
+TEST_F(MatchmakingTest, SelectCandidates_SingleHealer_SixTimedDPS_HealerIncluded)
 {
     uint32_t const joinTime             = 0;
     uint32_t const now                  = 65000; // 65 s elapsed — past the 60 s timer
@@ -766,14 +765,17 @@ TEST_F(MatchmakingTest, SelectCandidates_SingleHealer_SixTimedDPS_AllDPSFallback
                                         ALL_DPS_TIMER, singleHealerDpsTimer, now,
                                         selected, allDpsMatch);
 
-    EXPECT_TRUE(ok)          << "All-DPS fallback must activate with 1 healer + 6 timed DPS";
-    EXPECT_TRUE(allDpsMatch) << "allDpsMatch flag must be set";
+    EXPECT_TRUE(ok)           << "Single-healer fallback must activate with 1 healer + 6 timed DPS";
+    EXPECT_FALSE(allDpsMatch) << "The lone healer must not be skipped";
     ASSERT_EQ(selected.size(), 6u);
 
     uint32_t healerCount = static_cast<uint32_t>(
         std::count_if(selected.begin(), selected.end(),
                       [](auto const& c){ return c.role == PlayerRole::HEALER; }));
-    EXPECT_EQ(healerCount, 0u) << "Selected pool must contain no healers (healer excluded)";
+    EXPECT_EQ(healerCount, 1u) << "Selected pool must contain the lone healer";
+    EXPECT_TRUE(std::none_of(selected.begin(), selected.end(),
+                             [](auto const& c){ return c.id == 7; }))
+        << "The newest DPS must stay in queue";
 }
 
 /// Test 27: With exactly 1 healer and 6 DPS whose wait time has NOT elapsed,
@@ -800,19 +802,19 @@ TEST_F(MatchmakingTest, SelectCandidates_SingleHealer_SixDPS_BlockedBeforeTimer)
     EXPECT_FALSE(ok) << "Single-healer fallback must be blocked before timer expires";
 }
 
-/// Test 28: With exactly 1 healer and only 5 DPS (even after the timer), the
-/// single-healer fallback must NOT form a match — 5 DPS is insufficient for 3v3.
-TEST_F(MatchmakingTest, SelectCandidates_SingleHealer_OnlyFiveDPS_TimerElapsed_ReturnsFalse)
+/// Test 28: With exactly 1 healer and 5 DPS after the timer, the match forms
+/// as 1 healer + 2 DPS vs 3 DPS.
+TEST_F(MatchmakingTest, FullPipeline_SingleHealer_FiveTimedDPS_OneHealerTwoDPSVsThreeDPS)
 {
     uint32_t const joinTime             = 0;
     uint32_t const now                  = 65000; // timer has elapsed
     uint32_t const singleHealerDpsTimer = ALL_DPS_TIMER;
 
     auto candidates = MakeCandidates({
-        {PlayerRole::HEALER, DEFAULT_MMR},
-        {PlayerRole::DPS, DEFAULT_MMR}, {PlayerRole::DPS, DEFAULT_MMR},
-        {PlayerRole::DPS, DEFAULT_MMR}, {PlayerRole::DPS, DEFAULT_MMR},
-        {PlayerRole::DPS, DEFAULT_MMR},
+        {PlayerRole::HEALER, 1500},
+        {PlayerRole::DPS, 1600}, {PlayerRole::DPS, 1550},
+        {PlayerRole::DPS, 1500}, {PlayerRole::DPS, 1450},
+        {PlayerRole::DPS, 1400},
     }, joinTime);
 
     std::vector<QueuedCandidate> selected;
@@ -821,6 +823,31 @@ TEST_F(MatchmakingTest, SelectCandidates_SingleHealer_OnlyFiveDPS_TimerElapsed_R
                                         ALL_DPS_TIMER, singleHealerDpsTimer, now,
                                         selected, allDpsMatch);
 
-    EXPECT_FALSE(ok)
-        << "1 healer + 5 DPS must never form a match even after timer — 5 DPS is insufficient";
+    ASSERT_TRUE(ok) << "1 healer + 5 timed DPS must form a match";
+    EXPECT_FALSE(allDpsMatch);
+    ASSERT_EQ(selected.size(), 6u);
+
+    auto result = composer.FindBestTeamSplit(selected, TEAM_SIZE, true, allDpsMatch);
+
+    ASSERT_TRUE(result.valid);
+    EXPECT_EQ(CountHealers(result.team1Indices, selected) + CountHealers(result.team2Indices, selected), 1u);
+    EXPECT_LE(CountHealers(result.team1Indices, selected), 1u);
+    EXPECT_LE(CountHealers(result.team2Indices, selected), 1u);
+}
+
+/// Test 29: A split may never put two healers on the same team.
+TEST_F(MatchmakingTest, FindBestTeamSplit_TwoHealers_NeverStackedEvenIfBetterMMR)
+{
+    // Both healers + the 2000 DPS vs the three 1000 DPS would be a perfect MMR balance
+    std::vector<QueuedCandidate> selected = {
+        {1, PlayerRole::HEALER,  500, 0}, {2, PlayerRole::HEALER,  500, 0},
+        {3, PlayerRole::DPS,    1000, 0}, {4, PlayerRole::DPS,    1000, 0},
+        {5, PlayerRole::DPS,    1000, 0}, {6, PlayerRole::DPS,    2000, 0},
+    };
+
+    auto result = composer.FindBestTeamSplit(selected, TEAM_SIZE, true, false);
+
+    ASSERT_TRUE(result.valid);
+    EXPECT_EQ(CountHealers(result.team1Indices, selected), 1u);
+    EXPECT_EQ(CountHealers(result.team2Indices, selected), 1u);
 }

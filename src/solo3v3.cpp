@@ -399,8 +399,9 @@ void Solo3v3::EnumerateCombinations(
             for (uint32 i : combo) if (selected[i].role == HEALER) ++h1;
             for (uint32 i : team2) if (selected[i].role == HEALER) ++h2;
 
-            if (allDpsMatch  && (h1 != 0 || h2 != 0)) return;
-            if (!allDpsMatch && (h1 != 1 || h2 != 1)) return;
+            // Never stack healers: 2 healers are split 1/1, a lone healer goes 1/0
+            if (allDpsMatch && (h1 != 0 || h2 != 0)) return;
+            if (h1 > 1 || h2 > 1) return;
         }
 
         // Class stacking constraint: reject splits that place same-class players
@@ -565,19 +566,19 @@ bool Solo3v3::CheckSolo3v3Arena(BattlegroundQueue* queue, BattlegroundBracketId 
         }
         else if (healers.size() == 1)
         {
-            // Single-healer fallback: if enough DPS have waited long enough, start an
-            // all-DPS match with those DPS. The lone healer stays in queue waiting for
-            // a second healer. A match with only 1 healer + 5 DPS is never formed.
+            // Single-healer fallback: once enough DPS have waited past the timer, the lone
+            // healer plays with them (e.g. 1 healer + 2 DPS vs 3 DPS) instead of waiting
+            // indefinitely for a second healer.
             std::vector<Candidate> timedDps;
             for (auto& c : dps)
                 if (c.group->JoinTime + singleHealerDpsTimerMs <= now)
                     timedDps.push_back(c);
 
-            if (timedDps.size() >= MinPlayers * 2)
+            if (timedDps.size() >= MinPlayers * 2 - 1)
             {
-                for (uint32 i = 0; i < MinPlayers * 2; ++i)
+                selected.push_back(healers[0]);
+                for (uint32 i = 0; i < MinPlayers * 2 - 1; ++i)
                     selected.push_back(timedDps[i]);
-                allDpsMatch = true;
             }
         }
     }

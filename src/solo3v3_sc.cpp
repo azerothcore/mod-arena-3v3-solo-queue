@@ -571,6 +571,13 @@ bool NpcSolo3v3::CreateArenateam(Player* player, Creature* /*creature*/)
     if (!player)
         return false;
 
+    // Player cannot be in a party or raid
+    if (player->GetGroup())
+    {
+        ChatHandler(player->GetSession()).SendSysMessage("You must leave your party or raid before creating a SoloQ arena team.");
+        return false;
+    }
+
     // Check if player is already in an arena team
     if (player->GetArenaTeamId(ARENA_SLOT_SOLO_3v3))
     {

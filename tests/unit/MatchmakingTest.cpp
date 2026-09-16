@@ -262,15 +262,15 @@ TEST_F(MatchmakingTest, SelectCandidates_FIFOOrder_OldestPlayersPickedFirst)
     // Players 1-2 are the earliest healers; players 3-6 are the earliest DPS.
     // Players 7-8 join later and must NOT be selected.
     std::vector<QueuedCandidate> candidates = {
-        {1, PlayerRole::HEALER, DEFAULT_MMR, 0},
-        {2, PlayerRole::HEALER, DEFAULT_MMR, 100},
-        {3, PlayerRole::DPS,    DEFAULT_MMR, 200},
-        {4, PlayerRole::DPS,    DEFAULT_MMR, 300},
-        {5, PlayerRole::DPS,    DEFAULT_MMR, 400},
-        {6, PlayerRole::DPS,    DEFAULT_MMR, 500},
+        {1, PlayerRole::HEALER, DEFAULT_MMR, 0, 0},
+        {2, PlayerRole::HEALER, DEFAULT_MMR, 100, 0},
+        {3, PlayerRole::DPS,    DEFAULT_MMR, 200, 0},
+        {4, PlayerRole::DPS,    DEFAULT_MMR, 300, 0},
+        {5, PlayerRole::DPS,    DEFAULT_MMR, 400, 0},
+        {6, PlayerRole::DPS,    DEFAULT_MMR, 500, 0},
         // Extras — should never be selected
-        {7, PlayerRole::DPS,    DEFAULT_MMR, 600},
-        {8, PlayerRole::DPS,    DEFAULT_MMR, 700},
+        {7, PlayerRole::DPS,    DEFAULT_MMR, 600, 0},
+        {8, PlayerRole::DPS,    DEFAULT_MMR, 700, 0},
     };
 
     std::vector<QueuedCandidate> selected;
@@ -447,9 +447,9 @@ TEST_F(MatchmakingTest, FindBestTeamSplit_AllDPSMatch_NoHealersOnEitherTeam)
 {
     // Directly populate 'selected' as all DPS and set allDpsMatch=true
     std::vector<QueuedCandidate> selected = {
-        {1, PlayerRole::DPS, 1600, 0}, {2, PlayerRole::DPS, 1550, 0},
-        {3, PlayerRole::DPS, 1500, 0}, {4, PlayerRole::DPS, 1450, 0},
-        {5, PlayerRole::DPS, 1400, 0}, {6, PlayerRole::DPS, 1350, 0},
+        {1, PlayerRole::DPS, 1600, 0, 0}, {2, PlayerRole::DPS, 1550, 0, 0},
+        {3, PlayerRole::DPS, 1500, 0, 0}, {4, PlayerRole::DPS, 1450, 0, 0},
+        {5, PlayerRole::DPS, 1400, 0, 0}, {6, PlayerRole::DPS, 1350, 0, 0},
     };
 
     auto result = composer.FindBestTeamSplit(selected, TEAM_SIZE, true, /*allDpsMatch=*/true);
@@ -468,9 +468,9 @@ TEST_F(MatchmakingTest, FullPipeline_AllDPS_ProducesBalancedTeams)
     uint32_t const now   = 70000; // timer has elapsed for all players
 
     std::vector<QueuedCandidate> candidates = {
-        {1, PlayerRole::DPS, 1600, 0}, {2, PlayerRole::DPS, 1400, 0},
-        {3, PlayerRole::DPS, 1550, 0}, {4, PlayerRole::DPS, 1450, 0},
-        {5, PlayerRole::DPS, 1500, 0}, {6, PlayerRole::DPS, 1500, 0},
+        {1, PlayerRole::DPS, 1600, 0, 0}, {2, PlayerRole::DPS, 1400, 0, 0},
+        {3, PlayerRole::DPS, 1550, 0, 0}, {4, PlayerRole::DPS, 1450, 0, 0},
+        {5, PlayerRole::DPS, 1500, 0, 0}, {6, PlayerRole::DPS, 1500, 0, 0},
     };
 
     std::vector<QueuedCandidate> selected;
@@ -499,9 +499,9 @@ TEST_F(MatchmakingTest, FullPipeline_AllDPS_ProducesBalancedTeams)
 TEST_F(MatchmakingTest, FindBestTeamSplit_FilterTalentsDisabled_AnyCompositionValid)
 {
     std::vector<QueuedCandidate> selected = {
-        {1, PlayerRole::HEALER, 1500, 0}, {2, PlayerRole::HEALER, 1500, 0},
-        {3, PlayerRole::HEALER, 1500, 0}, {4, PlayerRole::DPS,    1500, 0},
-        {5, PlayerRole::DPS,    1500, 0}, {6, PlayerRole::DPS,    1500, 0},
+        {1, PlayerRole::HEALER, 1500, 0, 0}, {2, PlayerRole::HEALER, 1500, 0, 0},
+        {3, PlayerRole::HEALER, 1500, 0, 0}, {4, PlayerRole::DPS,    1500, 0, 0},
+        {5, PlayerRole::DPS,    1500, 0, 0}, {6, PlayerRole::DPS,    1500, 0, 0},
     };
 
     auto result = composer.FindBestTeamSplit(selected, TEAM_SIZE, false, false);

@@ -26,6 +26,7 @@
 #include "Chat.h"
 #include "DisableMgr.h"
 #include "SocialMgr.h"
+#include "World.h"
 #include "WorldSessionMgr.h"
 #include <algorithm>
 #include <functional>
@@ -45,6 +46,104 @@ uint32 Solo3v3::GetAverageMMR(ArenaTeam* team)
     uint32 matchMakerRating = team->GetStats().Rating;
 
     return matchMakerRating;
+}
+
+uint32 Solo3v3::GetPlayerMMR(Player* player) const
+{
+    if (ArenaTeam* at = sArenaTeamMgr->GetArenaTeamById(player->GetArenaTeamId(ARENA_SLOT_SOLO_3v3)))
+        for (auto const& member : at->GetMembers())
+            if (member.Guid == player->GetGUID())
+                return member.MatchMakerRating;
+
+    return sWorld->getIntConfig(CONFIG_ARENA_START_MATCHMAKER_RATING);
+}
+
+uint32 Solo3v3::GetAverageMMR(BattlegroundQueue* queue, uint32 poolIndex)
+{
+    uint32 sum = 0;
+    uint32 count = 0;
+
+    for (auto const& group : queue->m_SelectionPools[TEAM_ALLIANCE + poolIndex].SelectedGroups)
+    {
+        for (auto const& guid : group->Players)
+        {
+            if (Player* player = ObjectAccessor::FindPlayer(guid))
+            {
+                sum += GetPlayerMMR(player);
+                ++count;
+            }
+
+            break; // solo queue: exactly one player per group
+        }
+    }
+
+    if (!count)
+        return sWorld->getIntConfig(CONFIG_ARENA_START_MATCHMAKER_RATING);
+
+    return sum / count;
+}
+
+void Solo3v3::ApplyRatedResult(ArenaTeam* team, ObjectGuid guid, bool won, uint32 ownSideMMR, uint32 opponentSideMMR)
+{
+    ArenaTeamStats atStats = team->GetStats();
+    atStats.SeasonGames += 1;
+    atStats.WeekGames   += 1;
+
+    if (won)
+    {
+        atStats.SeasonWins += 1;
+        atStats.WeekWins   += 1;
+    }
+
+    int32 ratingMod = team->GetRatingMod(atStats.Rating, opponentSideMMR, won);
+    atStats.Rating = std::max<int32>(0, int32(atStats.Rating) + ratingMod);
+
+    atStats.Rank = 1;
+    for (auto i = sArenaTeamMgr->GetArenaTeamMapBegin(); i != sArenaTeamMgr->GetArenaTeamMapEnd(); ++i)
+        if (i->second->GetType() == ARENA_TEAM_SOLO_3v3 && i->second->GetStats().Rating > atStats.Rating)
+            ++atStats.Rank;
+
+    for (auto& member : team->GetMembers())
+    {
+        if (member.Guid != guid)
+            continue;
+
+        member.PersonalRating = atStats.Rating;
+        member.WeekGames   += 1;
+        member.SeasonGames += 1;
+
+        if (won)
+        {
+            member.WeekWins   += 1;
+            member.SeasonWins += 1;
+        }
+
+        int32 mmrMod = team->GetMatchmakerRatingMod(ownSideMMR, opponentSideMMR, won);
+        member.ModifyMatchmakerRating(mmrMod, ARENA_SLOT_SOLO_3v3);
+        break;
+    }
+
+    team->SetArenaTeamStats(atStats);
+}
+
+void Solo3v3::ApplyLeaverMMRLoss(ArenaTeam* team, ObjectGuid guid, uint32 instanceId, TeamId bgTeamId)
+{
+    auto it = bgArenaTeamsRating.find(instanceId);
+    if (it == bgArenaTeamsRating.end())
+        return;
+
+    uint32 ownSideMMR      = bgTeamId == TEAM_HORDE ? it->second.hordeMMR : it->second.allianceMMR;
+    uint32 opponentSideMMR = bgTeamId == TEAM_HORDE ? it->second.allianceMMR : it->second.hordeMMR;
+
+    for (auto& member : team->GetMembers())
+    {
+        if (member.Guid != guid)
+            continue;
+
+        int32 mmrMod = team->GetMatchmakerRatingMod(ownSideMMR, opponentSideMMR, false);
+        member.ModifyMatchmakerRating(mmrMod, ARENA_SLOT_SOLO_3v3);
+        break;
+    }
 }
 
 void Solo3v3::CountAsLoss(Player* player, bool isInProgress)
@@ -121,20 +220,28 @@ void Solo3v3::CountAsLoss(Player* player, bool isInProgress)
             ++atStats.Rank;
     }
 
+    bool const useMMR = sConfigMgr->GetOption<bool>("Solo.3v3.UseMatchmakerRating", true);
+
     for (ArenaTeam::MemberList::iterator itr = plrArenaTeam->GetMembers().begin(); itr != plrArenaTeam->GetMembers().end(); ++itr) {
         if (itr->Guid == player->GetGUID()) {
             itr->WeekGames += 1;
             itr->SeasonGames += 1;
             itr->PersonalRating = atStats.Rating;
 
-            if (int32(itr->MatchMakerRating) - ratingLoss < 0)
-                itr->MatchMakerRating = 0;
-            else
-                itr->MatchMakerRating -= ratingLoss;
+            if (!useMMR)
+            {
+                if (int32(itr->MatchMakerRating) - ratingLoss < 0)
+                    itr->MatchMakerRating = 0;
+                else
+                    itr->MatchMakerRating -= ratingLoss;
+            }
 
             break;
         }
     }
+
+    if (useMMR && isInProgress)
+        ApplyLeaverMMRLoss(plrArenaTeam, player->GetGUID(), instanceId, player->GetBgTeamId());
 
     plrArenaTeam->SetArenaTeamStats(atStats);
     plrArenaTeam->NotifyStatsChanged();
@@ -821,6 +928,7 @@ void Solo3v3::ProcessAbsentParticipants(Battleground* bg, TeamId winnerTeamId)
 {
     uint32 instanceId = bg->GetInstanceID();
     auto& ratingInfo  = bgArenaTeamsRating[instanceId];
+    bool const useMMR = sConfigMgr->GetOption<bool>("Solo.3v3.UseMatchmakerRating", true);
 
     for (auto& [guid, p] : playerArenaInstance)
     {
@@ -837,12 +945,18 @@ void Solo3v3::ProcessAbsentParticipants(Battleground* bg, TeamId winnerTeamId)
         if (!plrArenaTeam)
             continue;
 
-        ArenaTeamStats atStats = plrArenaTeam->GetStats();
-        atStats.SeasonGames += 1;
-        atStats.WeekGames   += 1;
-
-        if (winnerTeamId != TEAM_NEUTRAL)
+        if (winnerTeamId != TEAM_NEUTRAL && useMMR)
         {
+            uint32 ownSideMMR      = (p.teamId == TEAM_HORDE) ? ratingInfo.hordeMMR : ratingInfo.allianceMMR;
+            uint32 opponentSideMMR = (p.teamId == TEAM_HORDE) ? ratingInfo.allianceMMR : ratingInfo.hordeMMR;
+            ApplyRatedResult(plrArenaTeam, guid, p.teamId == winnerTeamId, ownSideMMR, opponentSideMMR);
+        }
+        else if (winnerTeamId != TEAM_NEUTRAL)
+        {
+            ArenaTeamStats atStats = plrArenaTeam->GetStats();
+            atStats.SeasonGames += 1;
+            atStats.WeekGames   += 1;
+
             const bool isWinner = (p.teamId == winnerTeamId);
             int32  ratingModifier;
             uint32 oldTeamRating;
@@ -898,10 +1012,16 @@ void Solo3v3::ProcessAbsentParticipants(Battleground* bg, TeamId winnerTeamId)
                 }
                 break;
             }
+
+            plrArenaTeam->SetArenaTeamStats(atStats);
         }
         else
         {
             // Draw: update game counts only, no rating change
+            ArenaTeamStats atStats = plrArenaTeam->GetStats();
+            atStats.SeasonGames += 1;
+            atStats.WeekGames   += 1;
+
             for (auto& member : plrArenaTeam->GetMembers())
             {
                 if (member.Guid != guid)
@@ -910,9 +1030,10 @@ void Solo3v3::ProcessAbsentParticipants(Battleground* bg, TeamId winnerTeamId)
                 member.SeasonGames += 1;
                 break;
             }
+
+            plrArenaTeam->SetArenaTeamStats(atStats);
         }
 
-        plrArenaTeam->SetArenaTeamStats(atStats);
         plrArenaTeam->NotifyStatsChanged();
         plrArenaTeam->SaveToDB(true);
 

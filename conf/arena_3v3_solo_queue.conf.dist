@@ -141,6 +141,25 @@ Solo.3v3.RatingPenalty.FirstLeaveDuringMatch = 50
 Solo.3v3.RatingPenalty.LeaveBeforeMatchStart = 50
 
 #
+#    Solo.3v3.UseMatchmakerRating
+#        Description: Rating maths for rated solo queue.
+#                     1 - Players are matched by their hidden solo matchmaker rating (MMR).
+#                         At match end every player's rating change is computed from their own
+#                         rating against the opposing side's average MMR (as in 2v2/3v3), and
+#                         their MMR moves by Elo against the opposing side's MMR. Players who
+#                         leave a running match also take the Elo MMR loss.
+#                     0 - Previous behaviour: players are matched by visible rating, the temporary
+#                         team rating is used as MMR, every player receives the temporary team's
+#                         rating delta, and leavers lose the flat Solo.3v3.RatingPenalty.* from
+#                         their MMR as well.
+#                     The one-time character_arena_stats migration (solo MMR = max(1500, rating))
+#                     is applied regardless of this setting.
+#        Default:     1 - (true)
+#                     0 - (false)
+
+Solo.3v3.UseMatchmakerRating = 1
+
+#
 #    Solo.3v3.MinLevel
 #        Description: Min level to create an arena team
 #        Default:     80

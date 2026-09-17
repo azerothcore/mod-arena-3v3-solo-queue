@@ -120,6 +120,8 @@ struct ArenaTeamsRating
 {
     uint32 allianceRating = 0;
     uint32 hordeRating    = 0;
+    uint32 allianceMMR    = 0;
+    uint32 hordeMMR       = 0;
     uint8  playersCount   = 0;
 };
 
@@ -138,6 +140,20 @@ public:
     static Solo3v3* instance();
 
     uint32 GetAverageMMR(ArenaTeam* team);
+
+    // Solo MMR of the player's ARENA_SLOT_SOLO_3v3 team member entry; start MMR when they have none.
+    uint32 GetPlayerMMR(Player* player) const;
+
+    // Mean solo MMR of the online players in selection pool TEAM_ALLIANCE + poolIndex.
+    uint32 GetAverageMMR(BattlegroundQueue* queue, uint32 poolIndex);
+
+    // Applies a rated match result to one member: rating from own rating vs opponentSideMMR,
+    // MMR from ownSideMMR vs opponentSideMMR. Does not touch the DB; callers save.
+    void ApplyRatedResult(ArenaTeam* team, ObjectGuid guid, bool won, uint32 ownSideMMR, uint32 opponentSideMMR);
+
+    // Elo MMR loss for a mid-match leaver; no-op without a rating snapshot for instanceId.
+    void ApplyLeaverMMRLoss(ArenaTeam* team, ObjectGuid guid, uint32 instanceId, TeamId bgTeamId);
+
     void CheckStartSolo3v3Arena(Battleground* bg);
     void CleanUp3v3SoloQ(Battleground* bg);
     bool CheckSolo3v3Arena(BattlegroundQueue* queue, BattlegroundBracketId bracket_id, bool isRated);

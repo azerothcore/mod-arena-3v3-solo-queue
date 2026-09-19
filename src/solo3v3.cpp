@@ -29,7 +29,9 @@
 #include "World.h"
 #include "WorldSessionMgr.h"
 #include <algorithm>
+#include <array>
 #include <functional>
+#include <span>
 
 Solo3v3* Solo3v3::instance()
 {
@@ -568,16 +570,20 @@ void Solo3v3::AssignToPool(
             c.group->teamId    = static_cast<TeamId>(poolTeam);
             c.group->GroupType = targetGroupType;
 
-            // Re-insert into destination bucket in JoinTime order to preserve FIFO fairness
-            auto& dstList = queue->m_QueuedGroups[bracket_id][targetGroupType];
-            auto& srcList = queue->m_QueuedGroups[bracket_id][srcGroupType];
+            // Rated arena keeps every team in one bucket, so there is nothing to move
+            if (srcGroupType != targetGroupType)
+            {
+                // Re-insert into destination bucket in JoinTime order to preserve FIFO fairness
+                auto& dstList = queue->m_QueuedGroups[bracket_id][targetGroupType];
+                auto& srcList = queue->m_QueuedGroups[bracket_id][srcGroupType];
 
-            auto insertPos = dstList.begin();
-            while (insertPos != dstList.end() && (*insertPos)->JoinTime <= c.group->JoinTime)
-                ++insertPos;
+                auto insertPos = dstList.begin();
+                while (insertPos != dstList.end() && (*insertPos)->JoinTime <= c.group->JoinTime)
+                    ++insertPos;
 
-            dstList.insert(insertPos, c.group);
-            srcList.erase(std::find(srcList.begin(), srcList.end(), c.group));
+                dstList.insert(insertPos, c.group);
+                srcList.erase(std::find(srcList.begin(), srcList.end(), c.group));
+            }
         }
 
         queue->m_SelectionPools[poolTeam].AddGroup(c.group, MinPlayers);
@@ -597,17 +603,21 @@ bool Solo3v3::CheckSolo3v3Arena(BattlegroundQueue* queue, BattlegroundBracketId 
     uint8  const preventClassStacking   = sConfigMgr->GetOption<uint8>("Solo.3v3.PreventClassStacking", 0);
     uint32 const classStackMask         = sConfigMgr->GetOption<uint32>("Solo.3v3.PreventClassStacking.Classes", 0);
 
-    uint8 const allianceGroupType = isRated ? BG_QUEUE_PREMADE_ALLIANCE : BG_QUEUE_NORMAL_ALLIANCE;
-    uint8 const hordeGroupType    = isRated ? BG_QUEUE_PREMADE_HORDE    : BG_QUEUE_NORMAL_HORDE;
+    // Rated solo keeps every entry in one bucket, unrated is split by faction
+    static constexpr std::array ratedGroupTypes   = { BG_QUEUE_RATED_ARENA };
+    static constexpr std::array unratedGroupTypes = { BG_QUEUE_NORMAL_ALLIANCE, BG_QUEUE_NORMAL_HORDE };
+
+    std::span<BattlegroundQueueGroupTypes const> groupTypes = unratedGroupTypes;
+    if (isRated)
+        groupTypes = ratedGroupTypes;
 
     uint32 const now = GameTime::GetGameTimeMS().count();
 
     // === Phase 1: collect all eligible candidates in queue order (FIFO) ===
     std::vector<Candidate> allCandidates;
-    for (int t = 0; t < 2; ++t)
+    for (auto const groupType : groupTypes)
     {
-        int idx = t + (isRated ? 0 : PVP_TEAMS_COUNT);
-        for (auto const& g : queue->m_QueuedGroups[bracket_id][idx])
+        for (auto const& g : queue->m_QueuedGroups[bracket_id][groupType])
         {
             if (g->IsInvitedToBGInstanceGUID)
                 continue;
@@ -723,8 +733,8 @@ bool Solo3v3::CheckSolo3v3Arena(BattlegroundQueue* queue, BattlegroundBracketId 
     }
 
     // === Phase 4: assign to selection pools, reclassifying faction bucket if needed ===
-    AssignToPool(bestTeam1,    selected, TEAM_ALLIANCE, queue, bracket_id, allianceGroupType, hordeGroupType, MinPlayers);
-    AssignToPool(team2Indices, selected, TEAM_HORDE,    queue, bracket_id, allianceGroupType, hordeGroupType, MinPlayers);
+    AssignToPool(bestTeam1,    selected, TEAM_ALLIANCE, queue, bracket_id, groupTypes.front(), groupTypes.back(), MinPlayers);
+    AssignToPool(team2Indices, selected, TEAM_HORDE,    queue, bracket_id, groupTypes.front(), groupTypes.back(), MinPlayers);
 
     return true;
 }

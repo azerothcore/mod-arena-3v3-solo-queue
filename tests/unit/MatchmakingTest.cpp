@@ -840,9 +840,9 @@ TEST_F(MatchmakingTest, FindBestTeamSplit_TwoHealers_NeverStackedEvenIfBetterMMR
 {
     // Both healers + the 2000 DPS vs the three 1000 DPS would be a perfect MMR balance
     std::vector<QueuedCandidate> selected = {
-        {1, PlayerRole::HEALER,  500, 0}, {2, PlayerRole::HEALER,  500, 0},
-        {3, PlayerRole::DPS,    1000, 0}, {4, PlayerRole::DPS,    1000, 0},
-        {5, PlayerRole::DPS,    1000, 0}, {6, PlayerRole::DPS,    2000, 0},
+        {1, PlayerRole::HEALER,  500, 0, 0}, {2, PlayerRole::HEALER,  500, 0, 0},
+        {3, PlayerRole::DPS,    1000, 0, 0}, {4, PlayerRole::DPS,    1000, 0, 0},
+        {5, PlayerRole::DPS,    1000, 0, 0}, {6, PlayerRole::DPS,    2000, 0, 0},
     };
 
     auto result = composer.FindBestTeamSplit(selected, TEAM_SIZE, true, false);

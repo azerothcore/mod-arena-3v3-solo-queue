@@ -636,58 +636,55 @@ void NpcSolo3v3::fetchQueueList()
 
     for (int i = BG_BRACKET_ID_FIRST; i <= BG_BRACKET_ID_LAST; i++)
     {
-        for (int j = 0; j < 2; j++)
+        for (auto queueInfo : queue->m_QueuedGroups[i][BG_QUEUE_RATED_ARENA])
         {
-            for (auto queueInfo : queue->m_QueuedGroups[i][j])
+            if (queueInfo->IsInvitedToBGInstanceGUID) // Skip when invited
+                continue;
+
+            for (auto const& playerGuid : queueInfo->Players)
             {
-                if (queueInfo->IsInvitedToBGInstanceGUID) // Skip when invited
+                Player* _player = ObjectAccessor::FindPlayer(playerGuid);
+                if (!_player)
                     continue;
 
-                for (auto const& playerGuid : queueInfo->Players)
+                switch (_player->getClass())
                 {
-                    Player* _player = ObjectAccessor::FindPlayer(playerGuid);
-                    if (!_player)
-                        continue;
-
-                    switch (_player->getClass())
-                    {
-                        case CLASS_WARRIOR:
-                            cache3v3Queue[WARRIOR]++;
-                            break;
-                        case CLASS_PALADIN:
-                            cache3v3Queue[PALADIN]++;
-                            break;
-                        case CLASS_DEATH_KNIGHT:
-                            cache3v3Queue[DK]++;
-                            break;
-                        case CLASS_HUNTER:
-                            cache3v3Queue[HUNTER]++;
-                            break;
-                        case CLASS_SHAMAN:
-                            cache3v3Queue[SHAMAN]++;
-                            break;
-                        case CLASS_ROGUE:
-                            cache3v3Queue[ROGUE]++;
-                            break;
-                        case CLASS_DRUID:
-                            cache3v3Queue[DRUID]++;
-                            break;
-                        case CLASS_MAGE:
-                            cache3v3Queue[MAGE]++;
-                            break;
-                        case CLASS_WARLOCK:
-                            cache3v3Queue[WARLOCK]++;
-                            break;
-                        case CLASS_PRIEST:
-                            cache3v3Queue[PRIEST]++;
-                            break;
-                        default:
-                            break;
-                    }
-
-                    Solo3v3TalentCat plrCat = sSolo->GetTalentCatForSolo3v3(_player); // get talent cat
-                    cache3v3Queue[plrCat]++;
+                    case CLASS_WARRIOR:
+                        cache3v3Queue[WARRIOR]++;
+                        break;
+                    case CLASS_PALADIN:
+                        cache3v3Queue[PALADIN]++;
+                        break;
+                    case CLASS_DEATH_KNIGHT:
+                        cache3v3Queue[DK]++;
+                        break;
+                    case CLASS_HUNTER:
+                        cache3v3Queue[HUNTER]++;
+                        break;
+                    case CLASS_SHAMAN:
+                        cache3v3Queue[SHAMAN]++;
+                        break;
+                    case CLASS_ROGUE:
+                        cache3v3Queue[ROGUE]++;
+                        break;
+                    case CLASS_DRUID:
+                        cache3v3Queue[DRUID]++;
+                        break;
+                    case CLASS_MAGE:
+                        cache3v3Queue[MAGE]++;
+                        break;
+                    case CLASS_WARLOCK:
+                        cache3v3Queue[WARLOCK]++;
+                        break;
+                    case CLASS_PRIEST:
+                        cache3v3Queue[PRIEST]++;
+                        break;
+                    default:
+                        break;
                 }
+
+                Solo3v3TalentCat plrCat = sSolo->GetTalentCatForSolo3v3(_player); // get talent cat
+                cache3v3Queue[plrCat]++;
             }
         }
     }

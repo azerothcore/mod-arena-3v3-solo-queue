@@ -956,3 +956,6 @@ TEST_F(MatchmakingTest, FindBestTeamSplit_TwoHealers_NeverStackedEvenIfBetterMMR
     EXPECT_EQ(CountHealers(result.team1Indices, selected), 1u);
     EXPECT_EQ(CountHealers(result.team2Indices, selected), 1u);
 }
+
+// trailing whitespace on the next line, on purpose 
+int codestyleCanaryWithTrailingSpace = 1; 

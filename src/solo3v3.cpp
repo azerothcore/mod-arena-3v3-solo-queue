@@ -183,7 +183,12 @@ void Solo3v3::CountAsLoss(Player* player, bool isInProgress)
         {
             arenasWithDeserter.insert(instanceId);
 
-            if (sConfigMgr->GetOption<bool>("Solo.3v3.CastDeserterOnLeave", true))
+            bool const castAfterTeammateDeath =
+                sConfigMgr->GetOption<bool>("Solo.3v3.CastDeserterOnLeave.AfterTeammateDeath", true);
+            bool const castDeserter = sConfigMgr->GetOption<bool>("Solo.3v3.CastDeserterOnLeave", true)
+                && (castAfterTeammateDeath || !HasDeadTeammate(player->GetGUID()));
+
+            if (castDeserter)
                 player->CastSpell(player, 26013, true);
         }
 
@@ -933,6 +938,20 @@ bool Solo3v3::DidArenaParticipantDie(ObjectGuid guid) const
 {
     auto it = playerArenaInstance.find(guid);
     return it != playerArenaInstance.end() && it->second.died;
+}
+
+bool Solo3v3::HasDeadTeammate(ObjectGuid guid) const
+{
+    auto it = playerArenaInstance.find(guid);
+    if (it == playerArenaInstance.end())
+        return false;
+
+    // also counts dead teammates who already left, they stay registered until cleanup
+    for (auto const& [otherGuid, p] : playerArenaInstance)
+        if (otherGuid != guid && p.instanceId == it->second.instanceId && p.teamId == it->second.teamId && p.died)
+            return true;
+
+    return false;
 }
 
 void Solo3v3::ProcessAbsentParticipants(Battleground* bg, TeamId winnerTeamId)

@@ -168,6 +168,7 @@ public:
 
     void MarkArenaParticipantDead(ObjectGuid guid);
     bool DidArenaParticipantDie(ObjectGuid guid) const;
+    bool HasDeadTeammate(ObjectGuid guid) const;
     void ProcessAbsentParticipants(Battleground* bg, TeamId winnerTeamId);
 
     // Pre-match team ratings, stored at queue time and used for rating delta calculation.

@@ -65,11 +65,12 @@ public:
     /// composition: normal path requires exactly 2 healers + 4 DPS (for
     /// teamSize 3). If no healers are present and every DPS player's wait time
     /// has exceeded @p allDpsTimer an all-DPS match is allowed instead.
-    /// If exactly 1 healer is present and at least teamSize*2-1 DPS have waited
-    /// beyond @p singleHealerDpsTimer, the healer and those DPS are selected
-    /// (1 healer + 2 DPS vs 3 DPS for teamSize 3).
+    /// If exactly 1 healer is present and enough DPS have waited beyond
+    /// @p singleHealerDpsTimer: with @p singleHealerWaits teamSize*2 DPS play an
+    /// all-DPS match and the healer stays in queue, otherwise the healer plays
+    /// with teamSize*2-1 DPS (1 healer + 2 DPS vs 3 DPS for teamSize 3).
     ///
-    /// @param candidates            All eligible queued candidates in FIFO order.
+    /// @param queued                All eligible queued candidates, in any order (sorted by joinTime here).
     /// @param teamSize              Players per team (normally 3).
     /// @param filterTalents         Enforce role-based composition rules.
     /// @param allDpsTimer           Wait time (ms) before all-DPS fallback when no healers.
@@ -77,22 +78,31 @@ public:
     /// @param now                   Current timestamp in ms.
     /// @param[out] selected         Chosen candidates (size == teamSize*2 on success).
     /// @param[out] allDpsMatch      Set to true when the all-DPS fallback is used.
+    /// @param singleHealerWaits     A lone healer stays queued while the DPS play (true), or plays with them (false).
     /// @returns true if a full set of candidates was selected.
     bool SelectCandidates(
-        std::vector<QueuedCandidate> const& candidates,
+        std::vector<QueuedCandidate> const& queued,
         uint32_t                            teamSize,
         bool                                filterTalents,
         uint32_t                            allDpsTimer,
         uint32_t                            singleHealerDpsTimer,
         uint32_t                            now,
         std::vector<QueuedCandidate>&       selected,
-        bool&                               allDpsMatch) const
+        bool&                               allDpsMatch,
+        bool                                singleHealerWaits = true) const
     {
         selected.clear();
         allDpsMatch = false;
 
-        if (candidates.size() < teamSize * 2)
+        if (queued.size() < teamSize * 2)
             return false;
+
+        // Input comes as Alliance bucket then Horde bucket, so it's not in join order yet
+        std::vector<QueuedCandidate> candidates = queued;
+        std::stable_sort(candidates.begin(), candidates.end(), [](QueuedCandidate const& a, QueuedCandidate const& b)
+        {
+            return a.joinTime < b.joinTime;
+        });
 
         if (!filterTalents)
         {
@@ -142,19 +152,22 @@ public:
         }
         else if (healers.size() == 1)
         {
-            // Single-healer fallback: once enough DPS have waited past the timer, the lone
-            // healer plays with them (e.g. 1 healer + 2 DPS vs 3 DPS) instead of waiting
-            // indefinitely for a second healer.
+            // Single-healer fallback: a lone healer must not hold the DPS hostage. Once enough
+            // DPS have waited past the timer they either play an all-DPS match while the healer
+            // stays queued for a second healer, or the healer joins them (1 healer + 2 DPS vs 3 DPS).
             std::vector<QueuedCandidate> timedDps;
             for (auto const& c : dps)
                 if (c.joinTime + singleHealerDpsTimer <= now)
                     timedDps.push_back(c);
 
-            if (timedDps.size() >= teamSize * 2 - 1)
+            uint32_t const timedDpsNeeded = singleHealerWaits ? teamSize * 2 : teamSize * 2 - 1;
+            if (timedDps.size() >= timedDpsNeeded)
             {
-                selected.push_back(healers[0]);
-                for (uint32_t i = 0; i < teamSize * 2 - 1; ++i)
+                if (!singleHealerWaits)
+                    selected.push_back(healers[0]);
+                for (uint32_t i = 0; i < timedDpsNeeded; ++i)
                     selected.push_back(timedDps[i]);
+                allDpsMatch = singleHealerWaits;
                 return true;
             }
         }

@@ -171,7 +171,7 @@ TEST_F(MatchmakingTest, SelectCandidates_InsufficientPlayers_ReturnsFalse)
 }
 
 /// Test 3: With exactly 1 healer and 5 DPS the composition is unbalanced;
-/// no match can be formed before the single-healer timer elapses.
+/// no match can be formed.
 TEST_F(MatchmakingTest, SelectCandidates_ExactlyOneHealer_UnbalancedComposition_ReturnsFalse)
 {
     auto candidates = MakeCandidates({
@@ -186,7 +186,7 @@ TEST_F(MatchmakingTest, SelectCandidates_ExactlyOneHealer_UnbalancedComposition_
     bool ok = composer.SelectCandidates(candidates, TEAM_SIZE, true,
                                         ALL_DPS_TIMER, ALL_DPS_TIMER, 30000, selected, allDpsMatch);
 
-    EXPECT_FALSE(ok) << "1 healer cannot be distributed fairly between two teams before the timer";
+    EXPECT_FALSE(ok) << "1 healer cannot be distributed fairly between two teams";
 }
 
 /// Test 4: When there are no healers and all DPS players have waited long
@@ -290,6 +290,39 @@ TEST_F(MatchmakingTest, SelectCandidates_FIFOOrder_OldestPlayersPickedFirst)
     bool found1 = std::any_of(selected.begin(), selected.end(),
                                [](auto const& c){ return c.id == 1; });
     EXPECT_TRUE(found1) << "Player 1 (earliest healer) must be selected first";
+}
+
+/// The queue hands candidates over as Alliance bucket then Horde bucket, so a
+/// long-waiting Horde player can sit behind Alliance players who just joined.
+/// Selection must go by join time, not by input position.
+TEST_F(MatchmakingTest, SelectCandidates_FactionBucketOrder_LongestWaitingPickedFirst)
+{
+    std::vector<QueuedCandidate> candidates = {
+        // Alliance bucket
+        {1, PlayerRole::HEALER, DEFAULT_MMR, 1000, 0},
+        {2, PlayerRole::DPS,    DEFAULT_MMR, 2000, 0},
+        {3, PlayerRole::DPS,    DEFAULT_MMR, 3000, 0},
+        {4, PlayerRole::DPS,    DEFAULT_MMR, 90000, 0}, // requeued right after a match
+        {5, PlayerRole::DPS,    DEFAULT_MMR, 91000, 0}, // requeued right after a match
+        // Horde bucket
+        {6, PlayerRole::HEALER, DEFAULT_MMR, 1500, 0},
+        {7, PlayerRole::DPS,    DEFAULT_MMR, 500, 0},
+        {8, PlayerRole::DPS,    DEFAULT_MMR, 2500, 0},
+    };
+
+    std::vector<QueuedCandidate> selected;
+    bool allDpsMatch = false;
+    bool ok = composer.SelectCandidates(candidates, TEAM_SIZE, true,
+                                        ALL_DPS_TIMER, ALL_DPS_TIMER, 100000, selected, allDpsMatch);
+
+    EXPECT_TRUE(ok);
+    ASSERT_EQ(selected.size(), 6u);
+
+    for (auto const& c : selected)
+    {
+        EXPECT_NE(c.id, 4u) << "Player 4 joined last and must not skip the Horde DPS";
+        EXPECT_NE(c.id, 5u) << "Player 5 joined last and must not skip the Horde DPS";
+    }
 }
 
 // ── Phase 3: FindBestTeamSplit ────────────────────────────────────────────────
@@ -745,8 +778,8 @@ TEST_F(MatchmakingTest, ClassStacking_Level6_HealerDPSSameClass_BlockedTogether)
 // ── Single-healer DPS fallback ────────────────────────────────────────────────
 
 /// Test 26: With exactly 1 healer and 6 DPS who have all waited past the
-/// singleHealerDpsTimer, the healer is selected with the 5 oldest DPS.
-TEST_F(MatchmakingTest, SelectCandidates_SingleHealer_SixTimedDPS_HealerIncluded)
+/// singleHealerDpsTimer, the 6 DPS play an all-DPS match and the healer stays queued.
+TEST_F(MatchmakingTest, SelectCandidates_SingleHealer_SixTimedDPS_HealerStaysQueued)
 {
     uint32_t const joinTime             = 0;
     uint32_t const now                  = 65000; // 65 s elapsed — past the 60 s timer
@@ -765,17 +798,12 @@ TEST_F(MatchmakingTest, SelectCandidates_SingleHealer_SixTimedDPS_HealerIncluded
                                         ALL_DPS_TIMER, singleHealerDpsTimer, now,
                                         selected, allDpsMatch);
 
-    EXPECT_TRUE(ok)           << "Single-healer fallback must activate with 1 healer + 6 timed DPS";
-    EXPECT_FALSE(allDpsMatch) << "The lone healer must not be skipped";
+    EXPECT_TRUE(ok)          << "A lone healer must not block 6 timed DPS";
+    EXPECT_TRUE(allDpsMatch) << "The match must be flagged all-DPS";
     ASSERT_EQ(selected.size(), 6u);
-
-    uint32_t healerCount = static_cast<uint32_t>(
-        std::count_if(selected.begin(), selected.end(),
-                      [](auto const& c){ return c.role == PlayerRole::HEALER; }));
-    EXPECT_EQ(healerCount, 1u) << "Selected pool must contain the lone healer";
     EXPECT_TRUE(std::none_of(selected.begin(), selected.end(),
-                             [](auto const& c){ return c.id == 7; }))
-        << "The newest DPS must stay in queue";
+                             [](auto const& c){ return c.role == PlayerRole::HEALER; }))
+        << "The lone healer must stay in queue";
 }
 
 /// Test 27: With exactly 1 healer and 6 DPS whose wait time has NOT elapsed,
@@ -802,9 +830,9 @@ TEST_F(MatchmakingTest, SelectCandidates_SingleHealer_SixDPS_BlockedBeforeTimer)
     EXPECT_FALSE(ok) << "Single-healer fallback must be blocked before timer expires";
 }
 
-/// Test 28: With exactly 1 healer and 5 DPS after the timer, the match forms
-/// as 1 healer + 2 DPS vs 3 DPS.
-TEST_F(MatchmakingTest, FullPipeline_SingleHealer_FiveTimedDPS_OneHealerTwoDPSVsThreeDPS)
+/// Test 28: With exactly 1 healer and only 5 DPS no match forms even after the
+/// timer: with SingleHealerWaits enabled 1 healer + 2 DPS vs 3 DPS is not allowed.
+TEST_F(MatchmakingTest, SelectCandidates_SingleHealer_FiveTimedDPS_NoOneHealerVsZeroMatch)
 {
     uint32_t const joinTime             = 0;
     uint32_t const now                  = 65000; // timer has elapsed
@@ -823,6 +851,64 @@ TEST_F(MatchmakingTest, FullPipeline_SingleHealer_FiveTimedDPS_OneHealerTwoDPSVs
                                         ALL_DPS_TIMER, singleHealerDpsTimer, now,
                                         selected, allDpsMatch);
 
+    EXPECT_FALSE(ok) << "1 healer + 5 DPS must not form a match while the healer waits";
+}
+
+/// With SingleHealerWaits disabled the lone healer plays instead: 1 healer and
+/// 6 timed DPS select the healer plus the 5 oldest DPS.
+TEST_F(MatchmakingTest, SelectCandidates_SingleHealerPlays_SixTimedDPS_HealerIncluded)
+{
+    uint32_t const joinTime             = 0;
+    uint32_t const now                  = 65000; // 65 s elapsed — past the 60 s timer
+    uint32_t const singleHealerDpsTimer = ALL_DPS_TIMER;
+
+    auto candidates = MakeCandidates({
+        {PlayerRole::HEALER, DEFAULT_MMR},
+        {PlayerRole::DPS, DEFAULT_MMR}, {PlayerRole::DPS, DEFAULT_MMR},
+        {PlayerRole::DPS, DEFAULT_MMR}, {PlayerRole::DPS, DEFAULT_MMR},
+        {PlayerRole::DPS, DEFAULT_MMR}, {PlayerRole::DPS, DEFAULT_MMR},
+    }, joinTime);
+
+    std::vector<QueuedCandidate> selected;
+    bool allDpsMatch = false;
+    bool ok = composer.SelectCandidates(candidates, TEAM_SIZE, true,
+                                        ALL_DPS_TIMER, singleHealerDpsTimer, now,
+                                        selected, allDpsMatch, false);
+
+    EXPECT_TRUE(ok)           << "Single-healer fallback must activate with 1 healer + 6 timed DPS";
+    EXPECT_FALSE(allDpsMatch) << "The lone healer must not be skipped";
+    ASSERT_EQ(selected.size(), 6u);
+
+    uint32_t healerCount = static_cast<uint32_t>(
+        std::count_if(selected.begin(), selected.end(),
+                      [](auto const& c){ return c.role == PlayerRole::HEALER; }));
+    EXPECT_EQ(healerCount, 1u) << "Selected pool must contain the lone healer";
+    EXPECT_TRUE(std::none_of(selected.begin(), selected.end(),
+                             [](auto const& c){ return c.id == 7; }))
+        << "The newest DPS must stay in queue";
+}
+
+/// With SingleHealerWaits disabled, 1 healer and 5 timed DPS form a
+/// 1 healer + 2 DPS vs 3 DPS match.
+TEST_F(MatchmakingTest, FullPipeline_SingleHealerPlays_FiveTimedDPS_OneHealerTwoDPSVsThreeDPS)
+{
+    uint32_t const joinTime             = 0;
+    uint32_t const now                  = 65000; // timer has elapsed
+    uint32_t const singleHealerDpsTimer = ALL_DPS_TIMER;
+
+    auto candidates = MakeCandidates({
+        {PlayerRole::HEALER, 1500},
+        {PlayerRole::DPS, 1600}, {PlayerRole::DPS, 1550},
+        {PlayerRole::DPS, 1500}, {PlayerRole::DPS, 1450},
+        {PlayerRole::DPS, 1400},
+    }, joinTime);
+
+    std::vector<QueuedCandidate> selected;
+    bool allDpsMatch = false;
+    bool ok = composer.SelectCandidates(candidates, TEAM_SIZE, true,
+                                        ALL_DPS_TIMER, singleHealerDpsTimer, now,
+                                        selected, allDpsMatch, false);
+
     ASSERT_TRUE(ok) << "1 healer + 5 timed DPS must form a match";
     EXPECT_FALSE(allDpsMatch);
     ASSERT_EQ(selected.size(), 6u);
@@ -833,6 +919,25 @@ TEST_F(MatchmakingTest, FullPipeline_SingleHealer_FiveTimedDPS_OneHealerTwoDPSVs
     EXPECT_EQ(CountHealers(result.team1Indices, selected) + CountHealers(result.team2Indices, selected), 1u);
     EXPECT_LE(CountHealers(result.team1Indices, selected), 1u);
     EXPECT_LE(CountHealers(result.team2Indices, selected), 1u);
+}
+
+/// With SingleHealerWaits disabled the timer still gates the fallback.
+TEST_F(MatchmakingTest, SelectCandidates_SingleHealerPlays_BlockedBeforeTimer)
+{
+    auto candidates = MakeCandidates({
+        {PlayerRole::HEALER, DEFAULT_MMR},
+        {PlayerRole::DPS, DEFAULT_MMR}, {PlayerRole::DPS, DEFAULT_MMR},
+        {PlayerRole::DPS, DEFAULT_MMR}, {PlayerRole::DPS, DEFAULT_MMR},
+        {PlayerRole::DPS, DEFAULT_MMR},
+    }, 0);
+
+    std::vector<QueuedCandidate> selected;
+    bool allDpsMatch = false;
+    bool ok = composer.SelectCandidates(candidates, TEAM_SIZE, true,
+                                        ALL_DPS_TIMER, ALL_DPS_TIMER, 30000,
+                                        selected, allDpsMatch, false);
+
+    EXPECT_FALSE(ok) << "Single-healer fallback must be blocked before timer expires";
 }
 
 /// Test 29: A split may never put two healers on the same team.

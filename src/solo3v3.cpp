@@ -594,6 +594,7 @@ bool Solo3v3::CheckSolo3v3Arena(BattlegroundQueue* queue, BattlegroundBracketId 
     bool   const avoidIgnore            = sConfigMgr->GetOption<bool>("Solo.3v3.AvoidSameTeamIgnore", true);
     uint32 const allDpsTimerMs          = sConfigMgr->GetOption<uint32>("Solo.3v3.FilterTalents.AllDPSTimer", 60) * 1000;
     uint32 const singleHealerDpsTimerMs = sConfigMgr->GetOption<uint32>("Solo.3v3.FilterTalents.SingleHealerDPSTimer", 90) * 1000;
+    bool   const singleHealerWaits      = sConfigMgr->GetOption<bool>("Solo.3v3.FilterTalents.SingleHealerWaits", true);
     uint8  const preventClassStacking   = sConfigMgr->GetOption<uint8>("Solo.3v3.PreventClassStacking", 0);
     uint32 const classStackMask         = sConfigMgr->GetOption<uint32>("Solo.3v3.PreventClassStacking.Classes", 0);
 
@@ -627,6 +628,13 @@ bool Solo3v3::CheckSolo3v3Arena(BattlegroundQueue* queue, BattlegroundBracketId 
 
     if (allCandidates.size() < MinPlayers * 2)
         return false;
+
+    // Each faction bucket is in join order but the two appended aren't. Without the sort
+    // Alliance players always go ahead of Horde ones, however long those have waited.
+    std::stable_sort(allCandidates.begin(), allCandidates.end(), [](Candidate const& a, Candidate const& b)
+    {
+        return a.group->JoinTime < b.group->JoinTime;
+    });
 
     // === Phase 2: select candidates that form a valid match (composition-aware, FIFO) ===
     std::vector<Candidate> selected;
@@ -673,19 +681,22 @@ bool Solo3v3::CheckSolo3v3Arena(BattlegroundQueue* queue, BattlegroundBracketId 
         }
         else if (healers.size() == 1)
         {
-            // Single-healer fallback: once enough DPS have waited past the timer, the lone
-            // healer plays with them (e.g. 1 healer + 2 DPS vs 3 DPS) instead of waiting
-            // indefinitely for a second healer.
+            // Single-healer fallback: a lone healer must not hold the DPS hostage. Once enough
+            // DPS have waited past the timer they either play an all-DPS match while the healer
+            // stays queued for a second healer, or the healer joins them (1 healer + 2 DPS vs 3 DPS).
             std::vector<Candidate> timedDps;
             for (auto& c : dps)
                 if (c.group->JoinTime + singleHealerDpsTimerMs <= now)
                     timedDps.push_back(c);
 
-            if (timedDps.size() >= MinPlayers * 2 - 1)
+            uint32 const timedDpsNeeded = singleHealerWaits ? MinPlayers * 2 : MinPlayers * 2 - 1;
+            if (timedDps.size() >= timedDpsNeeded)
             {
-                selected.push_back(healers[0]);
-                for (uint32 i = 0; i < MinPlayers * 2 - 1; ++i)
+                if (!singleHealerWaits)
+                    selected.push_back(healers[0]);
+                for (uint32 i = 0; i < timedDpsNeeded; ++i)
                     selected.push_back(timedDps[i]);
+                allDpsMatch = singleHealerWaits;
             }
         }
     }

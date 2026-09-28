@@ -147,20 +147,7 @@ public:
         s << "\nWeek Wins: " << stats.WeekWins;
 
         handler->PSendSysMessage("{}", s.str().c_str());
-
-        // Query MMR from database
-        CharacterDatabasePreparedStatement* stmt = CharacterDatabase.GetPreparedStatement(CHAR_SEL_MATCH_MAKER_RATING);
-        stmt->SetData(0, player->GetGUID().GetCounter());
-        stmt->SetData(1, ARENA_SLOT_SOLO_3v3);
-        PreparedQueryResult result = CharacterDatabase.Query(stmt);
-
-        uint16 matchMakerRating;
-        if (result)
-            matchMakerRating = (*result)[0].Get<uint16>();
-        else
-            matchMakerRating = sWorld->getIntConfig(CONFIG_ARENA_START_MATCHMAKER_RATING);
-
-        handler->PSendSysMessage("Solo MMR: {}", matchMakerRating);
+        handler->PSendSysMessage("Solo MMR: {}", sSolo->GetPlayerMMR(player));
 
         return true;
     }

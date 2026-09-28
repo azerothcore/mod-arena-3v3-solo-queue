@@ -379,19 +379,7 @@ bool NpcSolo3v3::OnGossipSelect(Player* player, Creature* creature, uint32 /*sen
                 ChatHandler(player->GetSession()).PSendSysMessage("{}", s.str().c_str());
                 CloseGossipMenuFor(player);
 
-                // Query MMR from database
-                CharacterDatabasePreparedStatement* stmt = CharacterDatabase.GetPreparedStatement(CHAR_SEL_MATCH_MAKER_RATING);
-                stmt->SetData(0, player->GetGUID().ToString());
-                stmt->SetData(1, ARENA_SLOT_SOLO_3v3);
-                PreparedQueryResult result = CharacterDatabase.Query(stmt);
-
-                uint16 matchMakerRating;
-                if (result)
-                    matchMakerRating = (*result)[0].Get<uint16>();
-                else
-                    matchMakerRating = sWorld->getIntConfig(CONFIG_ARENA_START_MATCHMAKER_RATING);
-
-                ChatHandler(player->GetSession()).PSendSysMessage("Solo MMR: {}", matchMakerRating);
+                ChatHandler(player->GetSession()).PSendSysMessage("Solo MMR: {}", sSolo->GetPlayerMMR(player));
             }
 
             return true;
@@ -613,6 +601,8 @@ bool NpcSolo3v3::CreateArenateam(Player* player, Creature* /*creature*/)
         delete arenaTeam;
         return false;
     }
+
+    sSolo->InitCaptainMMR(arenaTeam);
 
     // Register arena team
     sArenaTeamMgr->AddArenaTeam(arenaTeam);
@@ -926,12 +916,19 @@ void Solo3v3BG::OnBattlegroundEndReward(Battleground* bg, Player* player, TeamId
 
 void ConfigLoader3v3Arena::OnAfterConfigLoad(bool /*Reload*/)
 {
+    sSolo->LoadConfig();
+
     ArenaTeam::ArenaSlotByType.emplace(ARENA_TEAM_SOLO_3v3, ARENA_SLOT_SOLO_3v3);
     ArenaTeam::ArenaReqPlayersForType.emplace(ARENA_TYPE_3v3_SOLO, 6);
 
     BattlegroundMgr::queueToBg.insert({ BATTLEGROUND_QUEUE_3v3_SOLO, BATTLEGROUND_AA });
     BattlegroundMgr::QueueToArenaType.emplace(BATTLEGROUND_QUEUE_3v3_SOLO, (ArenaType)ARENA_TYPE_3v3_SOLO);
     BattlegroundMgr::ArenaTypeToQueue.emplace(ARENA_TYPE_3v3_SOLO, (BattlegroundQueueTypeId)BATTLEGROUND_QUEUE_3v3_SOLO);
+}
+
+void ConfigLoader3v3Arena::OnStartup()
+{
+    sSolo->LoadMatchmakerRatings();
 }
 
 void Team3v3arena::OnGetSlotByType(const uint32 type, uint8& slot)

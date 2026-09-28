@@ -139,6 +139,16 @@ class Solo3v3
 public:
     static Solo3v3* instance();
 
+    void LoadConfig();
+
+    // The core loads member MMR only for 2v2/3v3/5v5 teams and falls back to its own
+    // Arena.ArenaStartMatchmakerRating, so solo members are reloaded from their ARENA_SLOT_SOLO_3v3 row.
+    void LoadMatchmakerRatings();
+
+    // ArenaTeam::AddMember seeds a captain without a stored solo MMR with the core start MMR;
+    // replaces it with Solo.3v3.StartMatchmakerRating.
+    void InitCaptainMMR(ArenaTeam* team);
+
     uint32 GetAverageMMR(ArenaTeam* team);
 
     // Solo MMR of the player's ARENA_SLOT_SOLO_3v3 team member entry; start MMR when they have none.
@@ -202,6 +212,8 @@ private:
 
     uint32 GetMMR(Player* player, GroupQueueInfo* ginfo);
 
+    static void SetMemberMMR(ArenaTeam* team, ObjectGuid guid, uint16 mmr, uint16 maxMMR);
+
     int CountIgnorePairs(std::vector<uint32> const& indices, std::vector<Candidate> const& selected, bool avoidIgnore);
 
     // Returns true when the team at @p indices contains two players of the
@@ -245,6 +257,8 @@ private:
         uint32 MinPlayers);
 
     std::unordered_set<uint32> arenasWithDeserter;
+
+    uint16 startMMR = 1500;
 
     // Maps player GUID to their participation data for the ongoing solo arena match.
     // Players remain registered until the arena is fully destroyed, blocking re-queuing

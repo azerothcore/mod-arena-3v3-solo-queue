@@ -182,6 +182,14 @@ Solo.3v3.CastDeserterOnLeave.AfterTeammateDeath = 1
 Solo.3v3.UseMatchmakerRating = 1
 
 #
+#    Solo.3v3.StartMatchmakerRating
+#        Description: Start solo matchmaker rating (MMR) for players without a stored solo MMR.
+#                     Independent of the core's Arena.ArenaStartMatchmakerRating.
+#        Default:     1500
+
+Solo.3v3.StartMatchmakerRating = 1500
+
+#
 #    Solo.3v3.MinLevel
 #        Description: Min level to create an arena team
 #        Default:     80

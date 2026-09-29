@@ -26,7 +26,7 @@
 #include "Chat.h"
 #include "DisableMgr.h"
 #include "SocialMgr.h"
-#include "World.h"
+#include "Timer.h"
 #include "WorldSessionMgr.h"
 #include <algorithm>
 #include <functional>
@@ -35,6 +35,74 @@ Solo3v3* Solo3v3::instance()
 {
     static Solo3v3 instance;
     return &instance;
+}
+
+void Solo3v3::LoadConfig()
+{
+    startMMR = sConfigMgr->GetOption<uint16>("Solo.3v3.StartMatchmakerRating", 1500);
+}
+
+void Solo3v3::LoadMatchmakerRatings()
+{
+    uint32 oldMSTime = getMSTime();
+
+    QueryResult result = CharacterDatabase.Query(
+        "SELECT atm.arenaTeamId, atm.guid, cas.matchMakerRating, cas.maxMMR FROM arena_team_member atm"
+        " INNER JOIN arena_team ate ON ate.arenaTeamId = atm.arenaTeamId"
+        " LEFT JOIN character_arena_stats cas ON cas.guid = atm.guid AND cas.slot = {}"
+        " WHERE ate.type = {}", ARENA_SLOT_SOLO_3v3, ARENA_TEAM_SOLO_3v3);
+
+    uint32 count = 0;
+
+    if (result)
+    {
+        do
+        {
+            Field* fields = result->Fetch();
+
+            ArenaTeam* team = sArenaTeamMgr->GetArenaTeamById(fields[0].Get<uint32>());
+            if (!team)
+                continue;
+
+            // 0 (or NULL, no row) means no stored solo MMR, as in ArenaTeam::LoadMembersFromDB
+            uint16 mmr = fields[2].Get<uint16>();
+            if (!mmr)
+                mmr = startMMR;
+
+            SetMemberMMR(team, ObjectGuid::Create<HighGuid::Player>(fields[1].Get<uint32>()), mmr,
+                std::max(fields[3].Get<uint16>(), mmr));
+            ++count;
+        } while (result->NextRow());
+    }
+
+    LOG_INFO("server.loading", ">> Loaded {} solo 3v3 matchmaker ratings in {} ms", count,
+        GetMSTimeDiffToNow(oldMSTime));
+}
+
+void Solo3v3::InitCaptainMMR(ArenaTeam* team)
+{
+    CharacterDatabasePreparedStatement* stmt = CharacterDatabase.GetPreparedStatement(CHAR_SEL_MATCH_MAKER_RATING);
+    stmt->SetData(0, team->GetCaptain().GetCounter());
+    stmt->SetData(1, ARENA_SLOT_SOLO_3v3);
+
+    // 0 means no stored solo MMR, as in LoadMatchmakerRatings
+    PreparedQueryResult result = CharacterDatabase.Query(stmt);
+    if (!result || !(*result)[0].Get<uint16>())
+        SetMemberMMR(team, team->GetCaptain(), startMMR,
+            result ? std::max((*result)[1].Get<uint16>(), startMMR) : startMMR);
+}
+
+void Solo3v3::SetMemberMMR(ArenaTeam* team, ObjectGuid guid, uint16 mmr, uint16 maxMMR)
+{
+    for (auto& member : team->GetMembers())
+    {
+        if (member.Guid != guid)
+            continue;
+
+        member.MatchMakerRating = mmr;
+        member.MaxMMR = maxMMR;
+        return;
+    }
 }
 
 uint32 Solo3v3::GetAverageMMR(ArenaTeam* team)
@@ -55,7 +123,7 @@ uint32 Solo3v3::GetPlayerMMR(Player* player) const
             if (member.Guid == player->GetGUID())
                 return member.MatchMakerRating;
 
-    return sWorld->getIntConfig(CONFIG_ARENA_START_MATCHMAKER_RATING);
+    return startMMR;
 }
 
 uint32 Solo3v3::GetAverageMMR(BattlegroundQueue* queue, uint32 poolIndex)
@@ -78,7 +146,7 @@ uint32 Solo3v3::GetAverageMMR(BattlegroundQueue* queue, uint32 poolIndex)
     }
 
     if (!count)
-        return sWorld->getIntConfig(CONFIG_ARENA_START_MATCHMAKER_RATING);
+        return startMMR;
 
     return sum / count;
 }
@@ -398,7 +466,7 @@ uint32 Solo3v3::GetMMR(Player* player, GroupQueueInfo* ginfo)
 
     ArenaTeam* at = sArenaTeamMgr->GetArenaTeamById(player->GetArenaTeamId(ARENA_SLOT_SOLO_3v3));
     if (!at)
-        return sConfigMgr->GetOption<uint32>("Arena.ArenaStartPersonalRating", 0);
+        return startMMR;
 
     for (auto const& m : at->GetMembers())
         if (m.Guid == player->GetGUID())

@@ -81,10 +81,12 @@ class ConfigLoader3v3Arena : public WorldScript
 {
 public:
     ConfigLoader3v3Arena() : WorldScript("config_loader_3v3_arena", {
-        WORLDHOOK_ON_AFTER_CONFIG_LOAD
+        WORLDHOOK_ON_AFTER_CONFIG_LOAD,
+        WORLDHOOK_ON_STARTUP
     }) {}
 
     virtual void OnAfterConfigLoad(bool /*Reload*/) override;
+    void OnStartup() override;
 };
 
 class Team3v3arena : public ArenaTeamScript

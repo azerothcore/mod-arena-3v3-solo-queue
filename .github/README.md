@@ -33,10 +33,13 @@ matches change rating and MMR:
   (the average of its three players) is used as its MMR. The core computes one delta for the
   temporary team and every player receives it on both rating and MMR.
 
+Players without a stored solo MMR start at `Solo.3v3.StartMatchmakerRating` (default 1500), which is
+independent of the core's `Arena.ArenaStartMatchmakerRating`.
+
 The table uses the worldserver defaults (`Arena.ArenaWinRatingModifier1/2` = 48/24,
-`Arena.ArenaLoseRatingModifier` = 24, `Arena.ArenaMatchmakerRatingModifier` = 24, start MMR 1500).
-"Fresh" means rating 0 and MMR 1500. Other players have an MMR equal to their rating. Changes are
-per player.
+`Arena.ArenaLoseRatingModifier` = 24, `Arena.ArenaMatchmakerRatingModifier` = 24) and the default
+solo start MMR of 1500. "Fresh" means rating 0 and MMR 1500. Other players have an MMR equal to
+their rating. Changes are per player.
 
 | Scenario                                                                   | Result | Elo: rating                       | Elo: MMR | Core: rating                     | Core: MMR      |
 | -------------------------------------------------------------------------- | ------ | --------------------------------- | -------- | -------------------------------- | -------------- |

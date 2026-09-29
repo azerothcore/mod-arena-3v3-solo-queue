@@ -145,8 +145,8 @@ public:
     // Arena.ArenaStartMatchmakerRating, so solo members are reloaded from their ARENA_SLOT_SOLO_3v3 row.
     void LoadMatchmakerRatings();
 
-    // ArenaTeam::AddMember seeds a captain without a stored solo MMR with the core start MMR;
-    // replaces it with Solo.3v3.StartMatchmakerRating.
+    // ArenaTeam::AddMember seeds a captain without a solo row with the core start MMR and keeps a
+    // stored 0; both are replaced with Solo.3v3.StartMatchmakerRating.
     void InitCaptainMMR(ArenaTeam* team);
 
     uint32 GetAverageMMR(ArenaTeam* team);

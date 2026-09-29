@@ -86,8 +86,11 @@ void Solo3v3::InitCaptainMMR(ArenaTeam* team)
     stmt->SetData(0, team->GetCaptain().GetCounter());
     stmt->SetData(1, ARENA_SLOT_SOLO_3v3);
 
-    if (!CharacterDatabase.Query(stmt))
-        SetMemberMMR(team, team->GetCaptain(), startMMR, startMMR);
+    // 0 means no stored solo MMR, as in LoadMatchmakerRatings
+    PreparedQueryResult result = CharacterDatabase.Query(stmt);
+    if (!result || !(*result)[0].Get<uint16>())
+        SetMemberMMR(team, team->GetCaptain(), startMMR,
+            result ? std::max((*result)[1].Get<uint16>(), startMMR) : startMMR);
 }
 
 void Solo3v3::SetMemberMMR(ArenaTeam* team, ObjectGuid guid, uint16 mmr, uint16 maxMMR)

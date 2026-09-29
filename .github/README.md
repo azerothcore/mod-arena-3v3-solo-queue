@@ -38,8 +38,8 @@ independent of the core's `Arena.ArenaStartMatchmakerRating`.
 
 The table uses the worldserver defaults (`Arena.ArenaWinRatingModifier1/2` = 48/24,
 `Arena.ArenaLoseRatingModifier` = 24, `Arena.ArenaMatchmakerRatingModifier` = 24) and the default
-solo start MMR of 1500. "Fresh" means rating 0 and MMR 1500. Other players have an MMR equal to their rating. Changes are
-per player.
+solo start MMR of 1500. "Fresh" means rating 0 and MMR 1500. Other players have an MMR equal to
+their rating. Changes are per player.
 
 | Scenario                                                                   | Result | Elo: rating                       | Elo: MMR | Core: rating                     | Core: MMR      |
 | -------------------------------------------------------------------------- | ------ | --------------------------------- | -------- | -------------------------------- | -------------- |

@@ -27,7 +27,6 @@
 #include "DisableMgr.h"
 #include "SocialMgr.h"
 #include "Timer.h"
-#include "World.h"
 #include "WorldSessionMgr.h"
 #include <algorithm>
 #include <functional>
@@ -467,7 +466,7 @@ uint32 Solo3v3::GetMMR(Player* player, GroupQueueInfo* ginfo)
 
     ArenaTeam* at = sArenaTeamMgr->GetArenaTeamById(player->GetArenaTeamId(ARENA_SLOT_SOLO_3v3));
     if (!at)
-        return sConfigMgr->GetOption<uint32>("Arena.ArenaStartPersonalRating", 0);
+        return startMMR;
 
     for (auto const& m : at->GetMembers())
         if (m.Guid == player->GetGUID())

@@ -2,7 +2,6 @@
 #include "ObjectMgr.h"
 #include "Player.h"
 #include "Tokenize.h"
-#include "DatabaseEnv.h"
 #include "Config.h"
 #include "BattlegroundMgr.h"
 #include "CommandScript.h"
